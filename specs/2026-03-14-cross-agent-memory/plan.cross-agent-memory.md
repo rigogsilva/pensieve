@@ -7,7 +7,7 @@ spec: spec.cross-agent-memory.md
 research: research.cross-agent-memory.md
 worktrees:
   - /Users/rigo/Documents/Projects/worktrees/cross-agent-memory/implement/pensieve/
-status: in-progress
+status: complete
 last_updated: 2026-03-15
 ---
 
@@ -36,7 +36,7 @@ documentation/skill files.
 - [x] Testing
 - [x] AGENTS.md check
 - [x] Spec update
-- [ ] Worktree teardown
+- [x] Worktree teardown
 
 ## Worktree Setup
 
