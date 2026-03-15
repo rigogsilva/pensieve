@@ -16,10 +16,73 @@ fn home_dir() -> Result<PathBuf> {
     dirs::home_dir().ok_or_else(|| PensieveError::Config("cannot determine home directory".into()))
 }
 
-fn claude_skill_content() -> String {
-    r#"---
+fn bin_path() -> String {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.to_str().map(String::from))
+        .unwrap_or_else(|| "pensieve".to_string())
+}
+
+fn memory_protocol_block(bin: &str) -> String {
+    format!(
+        r#"<!-- pensieve:start -->
+## Memory Protocol
+
+This project uses [Pensieve](https://github.com/rigogsilva/pensieve) for cross-agent persistent memory.
+Binary: `{bin}`
+
+### Access
+You can use Pensieve two ways — pick whichever is available:
+- **MCP tools** (if registered): `save_memory`, `recall`, `get_context`, `end_session`, `read_memory`, `delete_memory`, `list_memories`, `archive_memory`, `configure`
+- **CLI** (always works): `{bin} save`, `{bin} recall`, `{bin} context`, etc.
+
+Both have identical capabilities. MCP tools are preferred when available.
+
+### Session lifecycle
+- **Start**: Call `get_context(project, source)` or run `{bin} context --project <project> --source <agent>`
+- **During work**: Save discoveries with `save_memory` or `{bin} save`
+- **Search**: Recall prior knowledge with `recall` or `{bin} recall "query"`
+- **End**: Call `end_session(summary, project, source)` or run `{bin} end-session --summary "..."`
+
+### When to save
+- Bug fix or surprising behavior → `type: gotcha`
+- Architecture/design decision → `type: decision`
+- User correction or preference → `type: preference`
+- How something works → `type: how-it-works`
+- General finding → `type: discovery` (default)
+
+### Save example (CLI)
+```bash
+{bin} save \
+  --title "Short title" \
+  --content "What you learned" \
+  --type gotcha \
+  --topic-key lowercase-hyphenated-key \
+  --project project-name \
+  --source <your-agent-name>
+```
+
+### When to search
+- Before starting work that might overlap past sessions
+- When the user says "remember" or references past work
+- After context compaction — call `get_context` or `{bin} context` to recover
+
+### Tips
+- `topic_key` reuses update the memory (revision increments) — no duplicates
+- `dry_run` on save/delete/archive previews without writing
+- `--output json` (CLI) for structured processing
+- `project` scopes memories; omit for global knowledge
+- Save important context before context compaction — it won't survive summarization
+<!-- pensieve:end -->"#
+    )
+}
+
+fn claude_skill_content(bin: &str) -> String {
+    let protocol = memory_protocol_block(bin);
+    format!(
+        r#"---
 name: pensieve-setup
-description: Set up Pensieve cross-agent memory for this environment
+description: Set up Pensieve cross-agent memory for this environment. Use when the user asks to "set up pensieve" or "configure pensieve".
 ---
 
 # Pensieve Setup Skill
@@ -31,7 +94,7 @@ When the user asks you to "set up pensieve", follow these steps:
 Run this command to register Pensieve as an MCP server:
 
 ```bash
-claude mcp add --transport stdio --scope user pensieve -- pensieve serve
+claude mcp add --transport stdio --scope user pensieve -- {bin} serve
 ```
 
 ## Step 2: Add Memory Protocol to CLAUDE.md
@@ -41,13 +104,7 @@ Check if CLAUDE.md exists in the project root. If it does, check for `<!-- pensi
 If the markers don't exist, append the following block to CLAUDE.md (or create it if it doesn't exist):
 
 ```
-<!-- pensieve:start -->
-## Memory Protocol
-
-This project uses Pensieve for cross-agent memory. At session start, call `pensieve context` to load relevant memories. When you learn something important (gotchas, decisions, preferences, discoveries), save it with `pensieve save`. At session end, call `pensieve end-session` with a summary.
-
-Memory types: gotcha, decision, preference, discovery, how-it-works
-<!-- pensieve:end -->
+{protocol}
 ```
 
 If markers already exist, replace the content between them with the block above.
@@ -57,20 +114,22 @@ If markers already exist, replace the content between them with the block above.
 Run this command to verify the setup:
 
 ```bash
-pensieve context
+{bin} context
 ```
 
 If it returns a response (even with empty fields), the setup is complete.
 
 Tell the user: "Pensieve is set up! I'll now remember things across sessions."
 "#
-    .to_string()
+    )
 }
 
-fn codex_skill_content() -> String {
-    r#"---
+fn codex_skill_content(bin: &str) -> String {
+    let protocol = memory_protocol_block(bin);
+    format!(
+        r#"---
 name: pensieve-setup
-description: Set up Pensieve cross-agent memory for this environment
+description: Set up Pensieve cross-agent memory for this environment. Use when the user asks to "set up pensieve" or "configure pensieve".
 ---
 
 # Pensieve Setup Skill
@@ -84,13 +143,7 @@ Check if AGENTS.md exists in the project root. If it does, check for `<!-- pensi
 If the markers don't exist, append the following block to AGENTS.md (or create it if it doesn't exist):
 
 ```
-<!-- pensieve:start -->
-## Memory Protocol
-
-This project uses Pensieve for cross-agent memory. At session start, run `pensieve context` to load relevant memories. When you learn something important (gotchas, decisions, preferences, discoveries), save it with `pensieve save`. At session end, run `pensieve end-session` with a summary.
-
-Memory types: gotcha, decision, preference, discovery, how-it-works
-<!-- pensieve:end -->
+{protocol}
 ```
 
 If markers already exist, replace the content between them with the block above.
@@ -100,29 +153,24 @@ If markers already exist, replace the content between them with the block above.
 Run this command to verify the setup:
 
 ```bash
-pensieve context
+{bin} context
 ```
 
 If it returns a response (even with empty fields), the setup is complete.
 
 Tell the user: "Pensieve is set up! I'll now remember things across sessions."
 "#
-    .to_string()
+    )
 }
 
-fn claude_desktop_skill_content() -> String {
-    let bin_path = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.to_str().map(String::from))
-        .unwrap_or_else(|| "pensieve".to_string());
-
+fn claude_desktop_skill_content(bin: &str) -> String {
     format!(
         r#"---
-name: pensieve-setup
-description: Set up Pensieve cross-agent memory for Claude Desktop
+name: pensieve-setup-desktop
+description: Set up Pensieve cross-agent memory for Claude Desktop. Use when the user asks to "set up pensieve" or "configure pensieve" in Claude Desktop.
 ---
 
-# Pensieve Setup Skill
+# Pensieve Setup for Claude Desktop
 
 When the user asks you to "set up pensieve", follow these steps:
 
@@ -132,11 +180,11 @@ Read the Claude Desktop config file at:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Linux: `~/.config/claude-desktop/config.json`
 
-Add the following to the `mcpServers` object (merge with existing servers, don't replace):
+Add the following to the `mcpServers` object (merge with existing servers, don't replace them):
 
 ```json
 "pensieve": {{
-  "command": "{bin_path}",
+  "command": "{bin}",
   "args": ["serve"]
 }}
 ```
@@ -145,15 +193,14 @@ Write the file back.
 
 ## Step 2: Tell the user
 
-Tell the user: "Pensieve has been added to Claude Desktop. Please restart Claude Desktop to activate."
-
-After restart, call `get_context` to verify the tools are working.
+Tell the user: "Pensieve has been added to Claude Desktop. Please restart Claude Desktop to activate. After restart, I'll have access to pensieve memory tools."
 "#
     )
 }
 
 fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
     let home = home_dir()?;
+    let bin = bin_path();
     let mut agents = Vec::new();
 
     let should_include = |name: &str| filter.is_none() || filter == Some(name);
@@ -165,7 +212,7 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             config_dir: home.join(".claude"),
             skills_dir: home.join(".claude").join("skills"),
             skill_dir_name: "pensieve-setup",
-            skill_content: claude_skill_content(),
+            skill_content: claude_skill_content(&bin),
         });
     }
 
@@ -176,7 +223,7 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             config_dir: home.join(".codex"),
             skills_dir: home.join(".codex").join("skills"),
             skill_dir_name: "pensieve-setup",
-            skill_content: codex_skill_content(),
+            skill_content: codex_skill_content(&bin),
         });
     }
 
@@ -192,11 +239,54 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             config_dir,
             skills_dir: home.join(".claude").join("skills"),
             skill_dir_name: "pensieve-setup-desktop",
-            skill_content: claude_desktop_skill_content(),
+            skill_content: claude_desktop_skill_content(&bin),
         });
     }
 
     Ok(agents)
+}
+
+fn ensure_in_path() -> Result<bool> {
+    let bin = bin_path();
+    let bin_dir = std::path::Path::new(&bin)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    // Check if the binary's directory is already in PATH
+    if let Ok(path) = std::env::var("PATH") {
+        if path.split(':').any(|p| p == bin_dir) {
+            return Ok(false); // already in PATH
+        }
+    }
+
+    // Also check if "pensieve" is directly findable
+    if std::process::Command::new("pensieve").arg("version").output().is_ok() {
+        return Ok(false); // already findable
+    }
+
+    let home = home_dir()?;
+    let export_line = format!("export PATH=\"{bin_dir}:$PATH\"");
+    let marker = "# pensieve";
+
+    // Try .zshrc first (macOS default), then .bashrc
+    let shell_configs = [home.join(".zshrc"), home.join(".bashrc")];
+
+    for config in &shell_configs {
+        if config.exists() {
+            let contents = std::fs::read_to_string(config)?;
+            if contents.contains(marker) {
+                return Ok(false); // already added
+            }
+            let addition = format!("\n{marker}\n{export_line}\n");
+            let mut file = std::fs::OpenOptions::new().append(true).open(config)?;
+            std::io::Write::write_all(&mut file, addition.as_bytes())?;
+            println!("  \u{2713} PATH \u{2014} added {bin_dir} to {}", config.display());
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
@@ -206,6 +296,11 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
         println!("No matching agents found.");
         return Ok(());
     }
+
+    println!("Setting up Pensieve...\n");
+
+    // Ensure binary is in PATH
+    let path_added = ensure_in_path()?;
 
     println!("Found agents:");
 
@@ -233,6 +328,10 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
     }
 
     println!();
+
+    if path_added {
+        println!("Restart your shell or run: source ~/.zshrc");
+    }
 
     if any_installed {
         println!("Start a new session and tell your agent: \"set up pensieve\"");
