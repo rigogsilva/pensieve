@@ -408,24 +408,11 @@ keyword search still works — vector search degrades gracefully.
 
 ## Connect your AI agent
 
-### Claude Code
+### Step 1: Add MCP config
 
-Add to `~/.claude/mcp.json`:
+Tell your agent how to reach Pensieve:
 
-```json
-{
-  "mcpServers": {
-    "pensieve": {
-      "command": "pensieve",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-### Codex CLI
-
-Add to your Codex MCP config:
+**Claude Code** — add to `~/.claude/mcp.json`:
 
 ```json
 {
@@ -438,9 +425,7 @@ Add to your Codex MCP config:
 }
 ```
 
-### Cursor
-
-Create `.cursor/mcp.json` in your project:
+**Codex CLI** — add to your Codex MCP config:
 
 ```json
 {
@@ -453,9 +438,20 @@ Create `.cursor/mcp.json` in your project:
 }
 ```
 
-### VS Code Copilot
+**Cursor** — create `.cursor/mcp.json` in your project:
 
-Add to `.vscode/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "pensieve": {
+      "command": "pensieve",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+**VS Code Copilot** — add to `.vscode/mcp.json`:
 
 ```json
 {
@@ -468,9 +464,50 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
+### Step 2: Teach agents the Memory Protocol
+
+Copy the skill files from `.ai/skills/` into your project or agent config so
+agents know _when_ and _how_ to use memory — not just that the tools exist:
+
+- **[`pensieve-memory-protocol.md`](.ai/skills/pensieve-memory-protocol.md)** —
+  tells agents to call `get_context()` at session start, when to save different
+  memory types, when to search, and to call `end_session()` before closing. This
+  is the judgment layer that `--help` can't provide.
+- **[`pensieve-setup.md`](.ai/skills/pensieve-setup.md)** — first-time setup
+  guidance for agents encountering Pensieve for the first time.
+
+For **Claude Code**, reference the protocol in your project's `CLAUDE.md`:
+
+```markdown
+@.ai/skills/pensieve-memory-protocol.md
+```
+
+For **Codex** or other agents, reference it in `AGENTS.md`:
+
+```markdown
+## Memory Protocol
+
+See .ai/skills/pensieve-memory-protocol.md
+```
+
+### Step 3: Auto-bootstrapping
+
+Once configured, this happens automatically on every session:
+
+1. Agent calls `get_context()` → gets last 3 sessions, preferences, recent
+   gotchas/decisions
+2. Pensieve writes `CONTEXT.md` to the memory directory — agents that auto-load
+   files (via `@` imports) get memory with zero tool calls
+3. Agent works, saves discoveries along the way
+4. Agent calls `end_session()` before closing → next session picks up where this
+   one left off
+
+The agent never starts from zero again. Even after context compaction, a
+`get_context()` call recovers prior knowledge.
+
 ### Without MCP
 
-Any agent can read memory files directly:
+Any agent can read memory files directly — no MCP required:
 
 ```bash
 cat ~/.pensieve/memory/global/*.md
