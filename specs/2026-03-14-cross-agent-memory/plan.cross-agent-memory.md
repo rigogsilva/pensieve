@@ -6,7 +6,7 @@ repository: pensieve
 spec: spec.cross-agent-memory.md
 research: research.cross-agent-memory.md
 worktrees:
-  - /Users/rigo/Documents/Projects/worktrees/cross-agent-memory/implement/pensieve/
+  - /path/to/worktrees/cross-agent-memory/implement/pensieve/
 status: complete
 last_updated: 2026-03-15
 ---
@@ -40,9 +40,9 @@ documentation/skill files.
 
 ## Worktree Setup
 
-| Repo       | Worktree path                                                                     | Base branch |
-| ---------- | --------------------------------------------------------------------------------- | ----------- |
-| `pensieve` | `/Users/rigo/Documents/Projects/worktrees/cross-agent-memory/implement/pensieve/` | `main`      |
+| Repo       | Worktree path                                               | Base branch |
+| ---------- | ----------------------------------------------------------- | ----------- |
+| `pensieve` | `/path/to/worktrees/cross-agent-memory/implement/pensieve/` | `main`      |
 
 _Worktree created with
 `git worktree add ../worktrees/cross-agent-memory/implement/pensieve -b cross-agent-memory`
@@ -269,8 +269,8 @@ Implementation:
   );
   ```
   `memory_id` is the composite key `"{project_or_global}/{topic_key}"` (e.g.
-  `"projects/jarvis/horizon-cli-scope"` or `"global/notebook-cell-format"`).
-  This prevents collisions between `global/foo` and `projects/jarvis/foo`.
+  `"projects/atlas/gateway-cli-scope"` or `"global/notebook-cell-format"`). This
+  prevents collisions between `global/foo` and `projects/atlas/foo`.
 
 ### 3.2 Index upsert and delete
 
@@ -298,7 +298,7 @@ Implementation:
   `BGESmallENV15Q`
 - `Embedder::embed(text: &str) -> Result<Vec<f32>>` — embed single text
 - Singleton pattern: `get_embedder() -> &Embedder` via `OnceLock`
-- Embed combined text: `"{title}: {content}"` (matching jarvis server pattern)
+- Embed combined text: `"{title}: {content}"` (matching atlas server pattern)
 
 ### 3.4 Hybrid recall
 
@@ -592,9 +592,9 @@ creates a temp directory for isolation.
 
 - [x] **Worktree teardown**: After all implementation work is verified:
   ```bash
-  cd /Users/rigo/Documents/Projects/worktrees/cross-agent-memory/implement/pensieve
+  cd /path/to/worktrees/cross-agent-memory/implement/pensieve
   git add -A
   git commit -m "cross-agent-memory: implement pensieve CLI + MCP memory server"
   git push --set-upstream origin cross-agent-memory
-  git -C /Users/rigo/Documents/Projects/pensieve worktree remove /Users/rigo/Documents/Projects/worktrees/cross-agent-memory/implement/pensieve
+  git -C /path/to/pensieve worktree remove /path/to/worktrees/cross-agent-memory/implement/pensieve
   ```

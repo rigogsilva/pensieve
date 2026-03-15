@@ -21,7 +21,7 @@ binary, two interfaces, three tiers of agent access:
 
 1. **MCP** (best): structured JSON-RPC over stdio via `pensieve serve`. No
    parsing ambiguity, typed tool calls.
-2. **CLI** (good): `pensieve recall "horizon" --output json` via bash. Any agent
+2. **CLI** (good): `pensieve recall "gateway" --output json` via bash. Any agent
    can use this without MCP support. Zero context cost until invoked — no tool
    schemas injected.
 3. **Files** (fallback): `grep -r "keyword" ~/.pensieve/memory/`. Works even
@@ -53,8 +53,8 @@ binary, two interfaces, three tiers of agent access:
 ## Key Repositories
 
 - `pensieve` (this repo) — Standalone Rust binary (CLI + MCP server). Replaces
-  the Python Parquet/ONNX-based memory server in the `jarvis` project.
-- `jarvis` — Consumes pensieve via MCP or CLI.
+  the Python Parquet/ONNX-based memory server in the `atlas` project.
+- `atlas` — Consumes pensieve via MCP or CLI.
 
 ## Requirements
 
@@ -148,8 +148,8 @@ context before it gets lost. This is a Memory Protocol behavior documented in
 ~/.pensieve/memory/
 ├── global/               # Long-term: cross-project knowledge
 ├── projects/
-│   ├── jarvis/           # Long-term: project-specific knowledge
-│   └── wearhouse/
+│   ├── atlas/            # Long-term: project-specific knowledge
+│   └── forge/
 ├── sessions/             # Daily: ephemeral session traces
 ├── index.sqlite          # Sidecar: vector + FTS index (rebuildable)
 └── CONTEXT.md            # Cached snapshot (written by get_context)
@@ -368,22 +368,21 @@ not just Claude.
 
 The skill includes a reference mapping for known Claude memory locations:
 
-| Source                                             | Project   | Type         | Topic Key            | Content                    |
-| -------------------------------------------------- | --------- | ------------ | -------------------- | -------------------------- |
-| `jarvis/memory/MEMORY.md` (scope section)          | jarvis    | gotcha       | horizon-cli-scope    | --scope flag placement     |
-| `jarvis/memory/MEMORY.md` (env section)            | jarvis    | how-it-works | project-runtime      | Use `poetry run`           |
-| `jarvis/memory/MEMORY.md` (path section)           | jarvis    | how-it-works | horizon-cli-config   | CLI path + config          |
-| `beamer/memory/feedback_notebook_cell_format.md`   | global    | gotcha       | notebook-cell-format | Jupyter cell source format |
-| `seranking/memory/feedback_modernize_pipper_cd.md` | global    | preference   | pipper-cd-pattern    | Camber repo modernization  |
-| `seranking/memory/feedback_slack_pr_format.md`     | global    | preference   | slack-pr-format      | Slack DM format for PRs    |
-| `wearhouse/memory/MEMORY.md`                       | wearhouse | decision     | wearhouse-vision     | Product vision + infra     |
-| `wearhouse/memory/feedback_ralph_ci_gate.md`       | wearhouse | gotcha       | ralph-ci-gate        | CI gate enforcement        |
-| `ghub/memory/feedback_dangerous_mode_hooks.md`     | global    | preference   | dangerous-mode-hooks | Safety hooks               |
+| Source                                             | Project | Type         | Topic Key            | Content                    |
+| -------------------------------------------------- | ------- | ------------ | -------------------- | -------------------------- |
+| `atlas/memory/MEMORY.md` (scope section)           | atlas   | gotcha       | gateway-cli-scope    | --scope flag placement     |
+| `atlas/memory/MEMORY.md` (env section)             | atlas   | how-it-works | project-runtime      | Use `poetry run`           |
+| `atlas/memory/MEMORY.md` (path section)            | atlas   | how-it-works | gateway-cli-config   | CLI path + config          |
+| `prism/memory/feedback_notebook_cell_format.md`    | global  | gotcha       | notebook-cell-format | Jupyter cell source format |
+| `compass/memory/feedback_modernize_scaffold_cd.md` | global  | preference   | scaffold-cd-pattern  | Acme repo modernization    |
+| `compass/memory/feedback_slack_pr_format.md`       | global  | preference   | slack-pr-format      | Slack DM format for PRs    |
+| `forge/memory/MEMORY.md`                           | forge   | decision     | forge-vision         | Product vision + infra     |
+| `forge/memory/feedback_sentinel_ci_gate.md`        | forge   | gotcha       | sentinel-ci-gate     | CI gate enforcement        |
+| `vault/memory/feedback_dangerous_mode_hooks.md`    | global  | preference   | dangerous-mode-hooks | Safety hooks               |
 
-Source paths are relative to
-`~/.claude/projects/-Users-rigo-Documents-Projects-*/memory/`. 3 index-only
-MEMORY.md files (beamer, seranking, ghub) are skipped — their content is in the
-feedback files. The jarvis MEMORY.md is split into 3 separate memories.
+Source paths are relative to `~/.claude/projects/*/memory/`. 3 index-only
+MEMORY.md files (prism, compass, vault) are skipped — their content is in the
+feedback files. The atlas MEMORY.md is split into 3 separate memories.
 
 ## Acceptance Criteria
 
@@ -466,7 +465,7 @@ feedback files. The jarvis MEMORY.md is split into 3 separate memories.
   background jobs
 - Multi-user conflict resolution — single-user system; teammates each have their
   own memory directory
-- Updates to the jarvis repo (`CLAUDE.md`, `AGENTS.md`) — handled separately in
+- Updates to the atlas repo (`CLAUDE.md`, `AGENTS.md`) — handled separately in
   that project
 - Encryption of memory files at rest — files are stored as plain markdown. Users
   should not store secrets (API keys, passwords) in memories
@@ -512,7 +511,7 @@ feedback files. The jarvis MEMORY.md is split into 3 separate memories.
   tool handlers are `async fn`.
 - **Embeddings**: `fastembed` v5.12.0 with `BGESmallENV15Q` model (384
   dimensions, ~33MB quantized). Auto-downloads from HuggingFace on first use.
-  Same model family (bge-small-en-v1.5) as the jarvis Python server being
+  Same model family (bge-small-en-v1.5) as the atlas Python server being
   replaced.
 - **Vector search**: `sqlite-vec` v0.1.6 — FFI bindings for rusqlite. Requires
   `unsafe` for `sqlite3_auto_extension` registration. Use `unsafe_code = "deny"`

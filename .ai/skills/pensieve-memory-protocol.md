@@ -52,6 +52,6 @@ before closing.
 
 ## Topic Key Conventions
 
-- Use lowercase alphanumeric with hyphens: `horizon-cli-scope`
-- Be descriptive: `ralph-ci-gate` not `fix-1`
+- Use lowercase alphanumeric with hyphens: `api-rate-limit`
+- Be descriptive: `docker-build-cache-gotcha` not `fix-1`
 - Reuse existing topic keys to update rather than duplicate

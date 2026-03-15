@@ -8,7 +8,7 @@ topics:
   - hybrid-retrieval
   - markdown-memory-storage
   - cross-agent-bootstrapping
-  - migration-from-jarvis
+  - migration-from-atlas
 tags: [research, codebase, mcp, rust, fastembed, sqlite, memory]
 status: complete
 last_updated: 2026-03-15
@@ -22,10 +22,10 @@ last_updated_by: claude-code
 
 ## Summary
 
-Research covered four areas: the current pensieve repo state, the jarvis Python
+Research covered four areas: the current pensieve repo state, the atlas Python
 memory server being replaced, Rust crate availability for MCP/embeddings/SQLite,
 and the Claude memory files that need migration. All required Rust crates exist
-and are mature. The official `rmcp` SDK is the clear choice for MCP. The jarvis
+and are mature. The official `rmcp` SDK is the clear choice for MCP. The atlas
 server's bge-small-en-v1.5 model is available via `fastembed` in Rust. 10 Claude
 memory files across 5 projects are documented and ready for migration mapping.
 
@@ -61,20 +61,19 @@ agents], categories=[command-line-utilities].
 **CI**: Two GitHub Actions jobs — `check` (ubuntu, fmt+clippy+test+build) and
 `build-macos` (macos-latest, build only).
 
-### 2. Jarvis Python Memory Server — What We're Replacing
+### 2. Atlas Python Memory Server — What We're Replacing
 
-**Location**:
-`/Users/rigo/Documents/Projects/jarvis/jarvis/mcps/memory/server.py`
+**Location**: `atlas/mcps/memory/server.py`
 
 **Architecture**: FastMCP server with Parquet storage + ONNX embeddings.
 
 **Storage**:
 
-- Primary: `~/.jarvis/memory/memory_embeddings.parquet` — Parquet file with
+- Primary: `~/.atlas/memory/memory_embeddings.parquet` — Parquet file with
   columns: key, value, embedding (384-dim float array), created_at, updated_at,
   metadata (JSON string)
-- Legacy: `~/.jarvis/memory/memory.json` — auto-migrated to Parquet on first run
-- Models: `~/.jarvis/models/bge-small-en-v1.5.onnx` + tokenizer.json
+- Legacy: `~/.atlas/memory/memory.json` — auto-migrated to Parquet on first run
+- Models: `~/.atlas/models/bge-small-en-v1.5.onnx` + tokenizer.json
 
 **Embedding model**: BAAI/bge-small-en-v1.5 via ONNX Runtime. 384 dimensions.
 Embeddings generated for combined text `"{key}: {value}"`. L2-normalized. Mean
@@ -100,17 +99,16 @@ fastmcp.
 **Key behaviors**: Atomic writes (temp file + rename). No duplicate key
 checking. Metadata stored as JSON string. Singleton embedder instance.
 
-**Shared embedder**
-(`/Users/rigo/Documents/Projects/jarvis/jarvis/mcps/shared/embedder.py`):
-ONNXEmbedder class with batch encoding (batch_size=64), mean pooling, L2
-normalization. Supports chunking (not used by memory). CPU-only inference with
-all graph optimizations enabled.
+**Shared embedder** (`atlas/mcps/shared/embedder.py`): ONNXEmbedder class with
+batch encoding (batch_size=64), mean pooling, L2 normalization. Supports
+chunking (not used by memory). CPU-only inference with all graph optimizations
+enabled.
 
 **Server launcher** (`run_server.py`): Maps server names to modules, runs via
-subprocess. Memory server is `jarvis.mcps.memory.server` on port 8001.
+subprocess. Memory server is `atlas.mcps.memory.server` on port 8001.
 
 **CLAUDE.md**: Auto-generated, partially incomplete. References Python 3.13,
-fastmcp, polars, pandas, jinja2, Chart.js. No AGENTS.md exists in jarvis.
+fastmcp, polars, pandas, jinja2, Chart.js. No AGENTS.md exists in atlas.
 
 ### 3. Rust Crate Ecosystem
 
@@ -141,7 +139,7 @@ async fn save_memory(&self, #[tool(param)] content: String) -> Result<CallToolRe
 - **Runtime**: ONNX via `ort` crate + HuggingFace `tokenizers`
 - **Model download**: Automatic from HuggingFace on first use, fully local
 - **Key models**:
-  - `BGESmallENV15` — 384 dims, ~127MB (same model as jarvis server)
+  - `BGESmallENV15` — 384 dims, ~127MB (same model as atlas server)
   - `BGESmallENV15Q` — 384 dims, ~33MB (quantized, smallest practical)
   - `AllMiniLML6V2` — 384 dims, ~90MB
 
@@ -154,7 +152,7 @@ let embeddings = model.embed(vec!["text to embed"], None)?;
 ```
 
 **Note**: The quantized `BGESmallENV15Q` at ~33MB is recommended for pensieve to
-keep binary + model size reasonable while matching jarvis's existing model
+keep binary + model size reasonable while matching atlas's existing model
 family.
 
 #### Vector Search: `sqlite-vec` v0.1.6
@@ -202,44 +200,43 @@ chrono = { version = "0.4", features = ["serde"] }
 
 **10 files across 5 projects** at `~/.claude/projects/*/memory/`:
 
-| #   | Source Path                                      | Project   | Type                    | Topic Key            | Content Summary                             |
-| --- | ------------------------------------------------ | --------- | ----------------------- | -------------------- | ------------------------------------------- |
-| 1   | jarvis/memory/MEMORY.md                          | jarvis    | gotcha + how-it-works   | horizon-cli-scope    | --scope flag must go AFTER subcommand       |
-| 2   | jarvis/memory/MEMORY.md                          | jarvis    | how-it-works            | horizon-cli-config   | CLI path + config location                  |
-| 3   | jarvis/memory/MEMORY.md                          | jarvis    | how-it-works            | project-runtime      | Use `poetry run` for Python commands        |
-| 4   | beamer/memory/feedback_notebook_cell_format.md   | global    | gotcha                  | notebook-cell-format | Jupyter cell source must be list of strings |
-| 5   | seranking/memory/feedback_modernize_pipper_cd.md | global    | preference              | pipper-cd-pattern    | Camber repo modernization checklist         |
-| 6   | seranking/memory/feedback_slack_pr_format.md     | global    | preference              | slack-pr-format      | Slack DM format for PR reviews              |
-| 7   | wearhouse/memory/MEMORY.md                       | wearhouse | decision + how-it-works | wearhouse-vision     | Product vision, roadmap, infrastructure     |
-| 8   | wearhouse/memory/feedback_ralph_ci_gate.md       | wearhouse | gotcha                  | ralph-ci-gate        | CI gate enforcement for ralph-loop          |
-| 9   | ghub/memory/feedback_dangerous_mode_hooks.md     | global    | preference              | dangerous-mode-hooks | Safety hooks for dangerous mode             |
-| 10  | ghub/memory/MEMORY.md                            | —         | index                   | —                    | Just references feedback file (skip)        |
-| —   | beamer/memory/MEMORY.md                          | —         | index                   | —                    | Just references feedback file (skip)        |
-| —   | seranking/memory/MEMORY.md                       | —         | index                   | —                    | Just references feedback files (skip)       |
+| #   | Source Path                                      | Project | Type                    | Topic Key            | Content Summary                             |
+| --- | ------------------------------------------------ | ------- | ----------------------- | -------------------- | ------------------------------------------- |
+| 1   | atlas/memory/MEMORY.md                           | atlas   | gotcha + how-it-works   | gateway-cli-scope    | --scope flag must go AFTER subcommand       |
+| 2   | atlas/memory/MEMORY.md                           | atlas   | how-it-works            | gateway-cli-config   | CLI path + config location                  |
+| 3   | atlas/memory/MEMORY.md                           | atlas   | how-it-works            | project-runtime      | Use `poetry run` for Python commands        |
+| 4   | prism/memory/feedback_notebook_cell_format.md    | global  | gotcha                  | notebook-cell-format | Jupyter cell source must be list of strings |
+| 5   | compass/memory/feedback_modernize_scaffold_cd.md | global  | preference              | scaffold-cd-pattern  | Acme repo modernization checklist           |
+| 6   | compass/memory/feedback_slack_pr_format.md       | global  | preference              | slack-pr-format      | Slack DM format for PR reviews              |
+| 7   | forge/memory/MEMORY.md                           | forge   | decision + how-it-works | forge-vision         | Product vision, roadmap, infrastructure     |
+| 8   | forge/memory/feedback_sentinel_ci_gate.md        | forge   | gotcha                  | sentinel-ci-gate     | CI gate enforcement for sentinel-loop       |
+| 9   | vault/memory/feedback_dangerous_mode_hooks.md    | global  | preference              | dangerous-mode-hooks | Safety hooks for dangerous mode             |
+| 10  | vault/memory/MEMORY.md                           | —       | index                   | —                    | Just references feedback file (skip)        |
+| —   | prism/memory/MEMORY.md                           | —       | index                   | —                    | Just references feedback file (skip)        |
+| —   | compass/memory/MEMORY.md                         | —       | index                   | —                    | Just references feedback files (skip)       |
 
 **Migration notes**:
 
-- 3 index files (MEMORY.md in beamer, seranking, ghub) are just pointers — skip
+- 3 index files (MEMORY.md in prism, compass, vault) are just pointers — skip
   during migration, their content is in the feedback files
-- jarvis MEMORY.md contains 3 distinct memories that need to be split into
+- atlas MEMORY.md contains 3 distinct memories that need to be split into
   separate files
-- wearhouse MEMORY.md is a single large memory (vision + infra)
+- forge MEMORY.md is a single large memory (vision + infra)
 - 5 feedback files have YAML frontmatter already (name, description, type)
-- Total unique memories to migrate: ~10 (after splitting jarvis MEMORY.md
-  into 3)
+- Total unique memories to migrate: ~10 (after splitting atlas MEMORY.md into 3)
 
 ## Code References
 
-- Jarvis memory server: `jarvis/mcps/memory/server.py` (555 lines)
-- Jarvis embedder: `jarvis/mcps/shared/embedder.py`
-- Jarvis run_server: `jarvis/mcps/run_server.py`
-- Jarvis CLAUDE.md: `CLAUDE.md` (auto-generated, incomplete)
+- Atlas memory server: `atlas/mcps/memory/server.py` (555 lines)
+- Atlas embedder: `atlas/mcps/shared/embedder.py`
+- Atlas run_server: `atlas/mcps/run_server.py`
+- Atlas CLAUDE.md: `CLAUDE.md` (auto-generated, incomplete)
 - Pensieve main: `src/main.rs` (3 lines, placeholder)
 - Pensieve Cargo.toml: `Cargo.toml` (zero deps)
 
 ## Architecture Documentation
 
-### Current Jarvis Memory Architecture (being replaced)
+### Current Atlas Memory Architecture (being replaced)
 
 ```
 Agent → FastMCP (stdio) → server.py → load_embeddings_df() → pandas DataFrame
