@@ -21,6 +21,17 @@ A shared memory system for AI agents. One brain, every AI.
 - Run CLI: `cargo run -- <subcommand>`
 - Run MCP server: `cargo run -- serve`
 
+## Before Pushing
+
+Run these before committing/pushing to avoid CI failures:
+
+```bash
+cargo fmt
+npx prettier --write "**/*.md"
+cargo test
+cargo clippy
+```
+
 ## Code Style
 
 - `cargo fmt` enforces formatting (rustfmt.toml config)
