@@ -20,6 +20,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy -- -D warnings
+      - run: npx prettier --check "**/*.md"
       - run: cargo test
       - run: cargo build --release
 

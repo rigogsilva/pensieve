@@ -16,7 +16,8 @@ A shared memory system for AI agents. One brain, every AI.
 - Build: `cargo build`
 - Test: `cargo test`
 - Lint: `cargo clippy`
-- Format: `cargo fmt`
+- Format Rust: `cargo fmt`
+- Format Markdown: `npx prettier --write "**/*.md"`
 - Run CLI: `cargo run -- <subcommand>`
 - Run MCP server: `cargo run -- serve`
 
