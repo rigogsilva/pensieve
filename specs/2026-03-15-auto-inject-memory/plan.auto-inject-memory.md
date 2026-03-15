@@ -7,7 +7,7 @@ spec: spec.auto-inject-memory.md
 research: research.auto-inject-memory.md
 worktrees:
   - /Users/rigo/Documents/Projects/worktrees/auto-inject-memory/implement/pensieve/
-status: in-progress
+status: complete
 last_updated: 2026-03-15
 ---
 
@@ -26,14 +26,14 @@ Configuration via `inject.enabled` in config.toml gates the feature.
 
 ## Progress
 
-- [ ] Worktree setup
-- [ ] Phase 1: inject command + config
-- [ ] Phase 2: update setup skill with opt-in hooks
-- [ ] Phase 3: README auto-inject section
-- [ ] Testing
-- [ ] AGENTS.md check
-- [ ] Spec update
-- [ ] Worktree teardown
+- [x] Worktree setup
+- [x] Phase 1: inject command + config
+- [x] Phase 2: update setup skill with opt-in hooks
+- [x] Phase 3: README auto-inject section
+- [x] Testing
+- [x] AGENTS.md check
+- [x] Spec update
+- [x] Worktree teardown
 
 ## Worktree Setup
 

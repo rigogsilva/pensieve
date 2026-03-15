@@ -335,14 +335,30 @@ Add an "Auto-inject" section to the README explaining:
 ## Implementation Notes
 
 - **Stdin JSON confirmed** (Claude Code): Hook passes `{"prompt": "..."}` via
-  stdin. `pensieve inject` should try JSON parse first, fall back to raw text.
+  stdin. `pensieve inject` tries JSON parse first, falls back to raw text.
 - **Cursor and Gemini stdin format**: Not yet verified. Implement Claude Code
   first, then verify and add adapter logic if needed.
-- **JSON merging**: The skill must read existing settings.json, parse JSON, add
-  to hook arrays without replacing existing hooks from other tools.
-- **`inject` reuses recall**: The inject command should call the same
-  `ops::recall::recall()` function with a threshold filter and compact output
-  formatter — minimal new code.
+- **JSON merging**: The skill instructs the agent to read existing settings.json,
+  parse JSON, and merge hooks without replacing existing hooks from other tools.
+- **`inject` reuses recall**: The inject command calls `ops::recall::recall()`
+  with a threshold filter and compact output formatter — ~80 lines of new code.
 - **SessionStart is separate from inject**: The SessionStart hook runs
   `pensieve context`, not `pensieve inject`. It's always wired (not opt-in)
   because it's the session bootstrap mechanism.
+- **Implementation decisions (v0.2.0)**:
+  - `InjectConfig` added to `PensieveConfig` with `#[serde(default)]` for
+    backwards compatibility — existing config files without `[inject]` section
+    deserialize correctly with defaults.
+  - `inject` command exits silently on all errors (returns `Ok(String::new())`)
+    to never block the agent. The binary catches errors too and does not write
+    to stderr.
+  - `configure --inject-enabled` flag added alongside existing `--keyword-weight`
+    / `--vector-weight` flags. MCP configure tool passes `None` for inject since
+    it's a CLI/skill concern.
+  - Setup skill updated with all 4 agent hook formats (Claude Code, Cursor,
+    Gemini CLI, Codex CLI). Pre-prompt hooks are opt-in (skill asks user).
+    SessionStart hooks are always wired.
+  - 8 new integration tests covering: disabled state, query flag, empty results,
+    JSON format, no stderr, stdin JSON piping, configure toggle, and threshold
+    filtering.
+  - Version bumped from 0.1.2 to 0.2.0 for the new feature.
