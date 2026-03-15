@@ -491,6 +491,65 @@ pensieve configure --inject-enabled true
 | Gemini CLI  | Yes         | Yes              | `BeforeAgent` hook      |
 | Codex CLI   | Not yet     | Yes              | `SessionStart` only     |
 
+### How session recovery works
+
+When the `SessionStart` hook fires (on session open or after context
+compaction), it runs `pensieve context` which returns:
+
+- **Last 3 sessions** — summaries of recent work scoped to the current project
+  and agent
+- **All active preferences** — user corrections and style preferences (no time
+  limit — preferences don't expire)
+- **Recent gotchas and decisions** — updated within the last 30 days
+- **Stale memory warnings** — memories not updated in 90+ days that may need
+  review
+
+This output is injected as plain text into the agent's context before the first
+prompt, so the agent starts the session already aware of prior decisions and
+gotchas — not from zero.
+
+After context compaction, `SessionStart` fires again, recovering the same
+knowledge automatically.
+
+### How inject works
+
+When the `UserPromptSubmit` (or equivalent) hook fires, it pipes the agent's
+JSON payload into `pensieve inject`:
+
+```
+{"prompt": "what do I know about the patronus charm?"}
+```
+
+Pensieve then:
+
+1. **Extracts the query** from `prompt` in the JSON, or uses `--query` if called
+   directly.
+2. **Strips stopwords** — common words (`what`, `do`, `I`, `know`, `about`,
+   `the`) are removed so the FTS5 index isn't overwhelmed by noise.
+3. **Runs hybrid recall** — BM25 keyword search on the remaining terms joined
+   with `OR`, plus vector similarity on the full query. Results are blended and
+   ranked by score.
+4. **Filters by threshold** — only memories above `relevance_threshold` (default
+   `0.3`) are included. If nothing clears the bar, nothing is injected.
+5. **Caps results** — at most `max_results` memories (default `3`) are returned.
+6. **Outputs compact text** injected above the prompt:
+
+```
+[Pensieve: 2 relevant memories]
+- (gotcha) Patronus requires a specific happy memory — project:hogwarts
+- (how-it-works) Wand movement is circular — project:hogwarts
+```
+
+If inject is disabled, no relevant memories exist, or any error occurs, the
+command exits silently — it never blocks or surfaces errors to the agent.
+
+Tune the defaults:
+
+```bash
+pensieve configure --relevance-threshold 0.5   # stricter filtering
+pensieve configure --inject-max-results 5      # more results
+```
+
 ### How to disable
 
 ```bash
