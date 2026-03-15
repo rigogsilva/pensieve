@@ -47,13 +47,13 @@ pensieve save \
 
 ## Mapping guide
 
-| Claude memory type      | Pensieve type  | Pensieve scope                   |
-| ----------------------- | -------------- | -------------------------------- |
-| Bug fix or gotcha       | `gotcha`       | `--project <name>` if specific   |
-| Architecture decision   | `decision`     | `--project <name>` if specific   |
-| User correction         | `preference`   | Usually global (no `--project`)  |
-| How something works     | `how-it-works` | `--project <name>` if specific   |
-| General finding         | `discovery`    | Depends on content               |
+| Claude memory type    | Pensieve type  | Pensieve scope                  |
+| --------------------- | -------------- | ------------------------------- |
+| Bug fix or gotcha     | `gotcha`       | `--project <name>` if specific  |
+| Architecture decision | `decision`     | `--project <name>` if specific  |
+| User correction       | `preference`   | Usually global (no `--project`) |
+| How something works   | `how-it-works` | `--project <name>` if specific  |
+| General finding       | `discovery`    | Depends on content              |
 
 ## Steps
 
