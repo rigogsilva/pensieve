@@ -23,8 +23,10 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 │   │   └── horizon-cli-scope.md
 │   └── wearhouse/
 │       └── ralph-ci-gate.md
-└── sessions/                  # Session summaries
-    └── 2026-03-15T143022-jarvis-claude-code.md
+├── sessions/                  # Session summaries
+│   └── 2026-03-15T143022-jarvis-claude-code.md
+├── index.sqlite               # Search index (rebuildable)
+└── CONTEXT.md                 # Auto-generated context snapshot
 ```
 
 ## Install
@@ -63,6 +65,9 @@ cargo install --git https://github.com/rigogsilva/pensieve
 pensieve update
 ```
 
+Downloads the latest release from GitHub, verifies the SHA-256 checksum, and
+replaces the binary in place.
+
 ## Quick start
 
 ```bash
@@ -95,9 +100,266 @@ pensieve serve
 | **CLI**   | `pensieve recall "query"`               | Scripts, shell, any agent  |
 | **Files** | `grep -r "keyword" ~/.pensieve/memory/` | Fallback, zero deps        |
 
+## Memory file format
+
+Each memory is a markdown file with YAML frontmatter:
+
+```markdown
+---
+title: Horizon CLI scope flag placement
+type: gotcha
+topic_key: horizon-cli-scope
+project: jarvis
+status: active
+revision: 2
+tags:
+  - horizon
+  - cli
+source: claude-code
+created: 2026-02-18T11:23:00Z
+updated: 2026-03-14T10:00:00Z
+---
+
+The `--scope` flag must go AFTER the subcommand, not before.
+`horizon --scope X schemas list` fails — use `horizon schemas list --scope X`.
+```
+
+### Memory types
+
+| Type           | When to save                        |
+| -------------- | ----------------------------------- |
+| `gotcha`       | Bug fix, surprising behavior        |
+| `decision`     | Architecture or design choice       |
+| `preference`   | User correction or style preference |
+| `how-it-works` | How a system or tool works          |
+| `discovery`    | General finding (default)           |
+
+### Memory lifecycle
+
+Memories start as **active** and can be transitioned:
+
+```bash
+# Archive a memory (no longer relevant)
+pensieve archive old-memory
+
+# Supersede a memory (replaced by a newer one)
+pensieve archive old-memory --superseded-by new-memory
+
+# Archived/superseded memories are excluded from get-context
+# but still searchable with --status archived
+pensieve list --status archived
+```
+
+### Topic keys
+
+Topic keys are the filename stem and unique identifier. Rules:
+
+- Lowercase alphanumeric with hyphens only: `horizon-cli-scope`
+- No spaces, uppercase, or special characters
+- Reuse an existing topic key to **update** the memory (revision increments)
+
+### Projects vs global
+
+- `--project jarvis` → stored in `projects/jarvis/horizon-cli-scope.md`
+- No project → stored in `global/horizon-cli-scope.md`
+- Global memories apply everywhere; project memories are scoped
+
+## CLI reference
+
+### save
+
+Save or update a memory. If the topic key already exists, the revision
+increments.
+
+```bash
+pensieve save \
+  --title "Memory title" \
+  --content "Memory content" \
+  --type gotcha \
+  --topic-key my-memory \
+  --project myproject \
+  --tags "cli,argparse" \
+  --source claude-code
+```
+
+Options:
+
+- `--dry-run` — preview what would be written without saving
+- `--expected-revision 2` — fail if the current revision doesn't match (conflict
+  detection for concurrent agents)
+- `--json '{"title":"...","content":"..."}'` — pass all params as JSON
+- `--json @file.json` — read params from a file
+- `--json -` — read params from stdin
+
+### recall
+
+Search memories using hybrid retrieval (BM25 keyword + vector similarity):
+
+```bash
+pensieve recall "deployment process"
+pensieve recall "ONNX" --project jarvis --type gotcha --limit 5
+pensieve recall --since 2026-03-01 --tags "cli"
+```
+
+### read
+
+Read the full content of a specific memory:
+
+```bash
+pensieve read horizon-cli-scope --project jarvis
+```
+
+### list
+
+List all memories (no content, just metadata):
+
+```bash
+pensieve list
+pensieve list --project jarvis --type gotcha --status active
+```
+
+### delete
+
+```bash
+pensieve delete old-memory --project jarvis
+pensieve delete old-memory --dry-run  # preview
+```
+
+### archive
+
+```bash
+pensieve archive outdated-memory
+pensieve archive outdated-memory --superseded-by new-memory
+```
+
+### get-context
+
+Session start — call this first to load prior knowledge:
+
+```bash
+pensieve get-context --project jarvis --source claude-code
+```
+
+Returns:
+
+- Last 3 session summaries
+- All active preferences (global + project)
+- Recent gotchas and decisions (last 30 days)
+- Stale memory warnings (>90 days old)
+- First-run notice if unconfigured
+
+Also generates `CONTEXT.md` in the memory directory for agents that auto-load
+files.
+
+### end-session
+
+Session end — save a summary before closing:
+
+```bash
+pensieve end-session \
+  --summary "Implemented the data pipeline refactor" \
+  --key-decisions "Chose Polars over Pandas for performance" \
+  --source claude-code \
+  --project jarvis
+```
+
+### reindex
+
+Rebuild the search index from markdown files. Use after manual edits, moving the
+memory directory, or if search seems stale:
+
+```bash
+pensieve reindex
+```
+
+### schema
+
+Introspect command parameters (useful for building integrations):
+
+```bash
+pensieve schema save    # show save command parameters
+pensieve schema         # show all commands
+```
+
+### configure
+
+View or update persistent configuration:
+
+```bash
+pensieve configure                          # show current config
+pensieve configure --memory-dir ~/path      # set memory directory
+pensieve configure --keyword-weight 0.8     # tune retrieval
+pensieve configure --vector-weight 0.2
+```
+
+### Global flags
+
+These go **before** the subcommand:
+
+```bash
+pensieve --output json save ...    # JSON output
+pensieve --memory-dir /tmp save ... # temporary directory override
+```
+
+## Configuration
+
+Config lives at `~/.config/pensieve/config.toml`:
+
+```toml
+memory_dir = "/Users/you/.pensieve/memory"
+
+[retrieval]
+keyword_weight = 0.7
+vector_weight = 0.3
+```
+
+### Priority
+
+1. CLI flag (`--memory-dir`)
+2. Environment variable (`PENSIEVE_MEMORY_DIR`)
+3. Config file (`~/.config/pensieve/config.toml`)
+4. Default (`~/.pensieve/memory/`)
+
+### Cloud sync
+
+Point the memory directory to a synced folder for cross-machine access:
+
+```bash
+# iCloud
+pensieve configure --memory-dir ~/Library/Mobile\ Documents/com~apple~CloudDocs/pensieve
+
+# Google Drive
+pensieve configure --memory-dir ~/Google\ Drive/My\ Drive/pensieve
+```
+
+Since memories are plain markdown files, cloud sync works naturally. The SQLite
+index is local and rebuildable — run `pensieve reindex` on each machine after
+sync.
+
+## Hybrid retrieval
+
+Pensieve uses two search strategies combined:
+
+- **BM25 (keyword)** — exact term matching via SQLite FTS5. Fast, precise. Finds
+  "ONNX" when you search "ONNX".
+- **Vector (semantic)** — embedding similarity via fastembed + sqlite-vec. Finds
+  "deployment process" when the memory says "how we ship to prod".
+
+Results are blended with configurable weights (default 70% keyword, 30% vector):
+
+```bash
+# Tune weights
+pensieve configure --keyword-weight 0.5 --vector-weight 0.5
+```
+
+The embedding model (~127MB) downloads automatically on first use. If offline,
+keyword search still works — vector search degrades gracefully.
+
 ## Connect your AI agent
 
-**Claude Code** — add to `~/.claude/mcp.json`:
+### Claude Code
+
+Add to `~/.claude/mcp.json`:
 
 ```json
 {
@@ -110,65 +372,82 @@ pensieve serve
 }
 ```
 
-See [`.ai/mcp-configs/README.md`](.ai/mcp-configs/README.md) for Codex, Cursor,
-Copilot, and Gemini CLI configs.
+### Codex CLI
 
-## Memory types
+Add to your Codex MCP config:
 
-| Type           | When to save                        |
-| -------------- | ----------------------------------- |
-| `gotcha`       | Bug fix, surprising behavior        |
-| `decision`     | Architecture or design choice       |
-| `preference`   | User correction or style preference |
-| `how-it-works` | How a system or tool works          |
-| `discovery`    | General finding (default)           |
+```json
+{
+  "mcpServers": {
+    "pensieve": {
+      "command": "pensieve",
+      "args": ["serve"]
+    }
+  }
+}
+```
 
-## CLI commands
+### Cursor
 
-| Command       | Description                          |
-| ------------- | ------------------------------------ |
-| `save`        | Save or update a memory              |
-| `read`        | Read a memory by topic key           |
-| `recall`      | Hybrid search (BM25 + vector)        |
-| `list`        | List memories with filters           |
-| `delete`      | Delete a memory                      |
-| `archive`     | Archive or supersede a memory        |
-| `configure`   | View or update config                |
-| `get-context` | Session start — load prior knowledge |
-| `end-session` | Session end — save summary           |
-| `reindex`     | Rebuild search index                 |
-| `schema`      | Introspect command schemas           |
-| `serve`       | Start MCP server (stdio)             |
-| `version`     | Print version                        |
-| `update`      | Self-update from GitHub releases     |
+Create `.cursor/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "pensieve": {
+      "command": "pensieve",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+### VS Code Copilot
+
+Add to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "pensieve": {
+      "command": "pensieve",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+### Without MCP
+
+Any agent can read memory files directly:
+
+```bash
+cat ~/.pensieve/memory/global/*.md
+grep -r "keyword" ~/.pensieve/memory/
+pensieve recall "keyword"
+```
 
 ## MCP tools
 
 When running as an MCP server (`pensieve serve`), exposes 9 tools:
 
-- `save_memory` — save/upsert with frontmatter
-- `recall` — hybrid keyword + vector search
-- `read_memory` — read by topic key
-- `delete_memory` — delete a memory
-- `list_memories` — list with filters
-- `archive_memory` — archive or supersede
-- `configure` — view/update config
-- `get_context` — session bootstrapping
-- `end_session` — save session summary
+| Tool             | Description                               |
+| ---------------- | ----------------------------------------- |
+| `save_memory`    | Save/upsert a memory with frontmatter     |
+| `recall`         | Hybrid keyword + vector search            |
+| `read_memory`    | Read full content by topic key            |
+| `delete_memory`  | Delete a memory                           |
+| `list_memories`  | List with filters (type, project, status) |
+| `archive_memory` | Archive or supersede a memory             |
+| `configure`      | View or update config                     |
+| `get_context`    | Session start — load prior knowledge      |
+| `end_session`    | Session end — save summary                |
 
-## Configuration
+## Importing existing memories
 
-Config lives at `~/.config/pensieve/config.toml`. Defaults work out of the box.
-
-```bash
-# Custom memory directory
-pensieve configure --memory-dir ~/my-memories
-
-# Tune retrieval weights (keyword vs vector)
-pensieve configure --keyword-weight 0.7 --vector-weight 0.3
-```
-
-Priority: CLI flag > `PENSIEVE_MEMORY_DIR` env var > config file > defaults.
+If you have existing Claude Code memories at `~/.claude/projects/*/memory/`, see
+[`.ai/skills/pensieve-import.md`](.ai/skills/pensieve-import.md) for a
+step-by-step import guide.
 
 ## Tech stack
 
