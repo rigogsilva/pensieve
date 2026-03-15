@@ -81,6 +81,7 @@ pub enum Command {
         output: Option<OutputFormat>,
 
         /// Topic key
+        #[arg(long)]
         topic_key: String,
 
         /// Project name
@@ -145,6 +146,7 @@ pub enum Command {
         output: Option<OutputFormat>,
 
         /// Topic key
+        #[arg(long)]
         topic_key: String,
 
         /// Project name
@@ -162,6 +164,7 @@ pub enum Command {
         output: Option<OutputFormat>,
 
         /// Topic key
+        #[arg(long)]
         topic_key: String,
 
         /// Project name

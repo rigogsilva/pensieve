@@ -22,6 +22,16 @@ struct VersionCache {
     checked_at: String,
 }
 
+fn parse_version(v: &str) -> Option<(u32, u32, u32)> {
+    let v = v.strip_prefix('v').unwrap_or(v);
+    let parts: Vec<&str> = v.split('.').collect();
+    if parts.len() == 3 {
+        Some((parts[0].parse().ok()?, parts[1].parse().ok()?, parts[2].parse().ok()?))
+    } else {
+        None
+    }
+}
+
 fn check_latest_version() -> Option<String> {
     let cache_dir = dirs::home_dir()?.join(".config").join("pensieve");
     let cache_path = cache_dir.join("version_cache.json");
@@ -123,7 +133,11 @@ pub fn get_context(
     // Version check (non-blocking, best-effort)
     let current_version = env!("CARGO_PKG_VERSION");
     if let Some(latest) = check_latest_version() {
-        if latest != current_version && !latest.is_empty() {
+        let is_newer = match (parse_version(&latest), parse_version(current_version)) {
+            (Some(l), Some(c)) => l > c,
+            _ => latest != current_version && !latest.is_empty(),
+        };
+        if is_newer {
             let version_notice = format!(
                 "Pensieve v{current_version} is outdated (latest: v{latest}). Run `pensieve update` to upgrade."
             );
