@@ -70,10 +70,12 @@ Add the Memory Protocol (see Step 2). You can use Pensieve via CLI commands.
 
 ## Step 2: Add Memory Protocol
 
-IMPORTANT: This is a GLOBAL setup, not per-project. Add the Memory Protocol to the user-level instruction file:
-- **Claude Code**: `~/.claude/CLAUDE.md` (global, NOT the project's CLAUDE.md)
-- **Codex CLI**: `~/.codex/AGENTS.md` (global)
-- **Other agents**: The global instruction file for that agent
+IMPORTANT: This is a GLOBAL setup, not per-project. Add the Memory Protocol to the user-level instruction file.
+DO NOT create or modify any file in the current working directory.
+
+- **Claude Code**: `~/.claude/CLAUDE.md` — NOT the project's CLAUDE.md, NOT `./CLAUDE.md`
+- **Codex CLI**: `~/.codex/AGENTS.md` — NOT `./AGENTS.md` in the workspace
+- **Other agents**: The global instruction file for that agent (always in the home directory)
 
 Check for `<!-- pensieve:start -->` markers.
 
