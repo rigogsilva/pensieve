@@ -5,7 +5,15 @@ fn test_config(dir: &TempDir) -> pensieve::types::PensieveConfig {
     pensieve::types::PensieveConfig {
         memory_dir: dir.path().to_path_buf(),
         retrieval: pensieve::types::RetrievalConfig::default(),
+        inject: pensieve::types::InjectConfig::default(),
     }
+}
+
+// Helper to create a config with inject enabled
+fn test_config_inject_enabled(dir: &TempDir) -> pensieve::types::PensieveConfig {
+    let mut cfg = test_config(dir);
+    cfg.inject.enabled = true;
+    cfg
 }
 
 #[test]
@@ -579,6 +587,7 @@ fn test_dry_run_configure() {
         Some(new_dir.to_str().unwrap()),
         None,
         None,
+        None,
         true,
     )
     .unwrap();
@@ -633,4 +642,307 @@ fn test_context_alias() {
         "pensieve get-context should succeed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+#[test]
+fn test_inject_disabled() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save a memory
+    let input = pensieve::ops::save::SaveInput {
+        content: "Inject disabled content".to_string(),
+        title: "Inject Disabled Test".to_string(),
+        memory_type: pensieve::types::MemoryType::Discovery,
+        topic_key: "inject-disabled".to_string(),
+        project: None,
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    pensieve::ops::save::save_memory(&config, input).unwrap();
+
+    // inject.enabled is false by default — should return empty
+    let result =
+        pensieve::ops::inject::run_inject(&config, Some("inject".to_string()), None, None, None)
+            .unwrap();
+    assert!(result.is_empty(), "inject should return empty when disabled");
+}
+
+#[test]
+fn test_inject_query_flag() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config_inject_enabled(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save a memory and index it
+    let input = pensieve::ops::save::SaveInput {
+        content: "The patronus charm requires focus".to_string(),
+        title: "Patronus Charm".to_string(),
+        memory_type: pensieve::types::MemoryType::HowItWorks,
+        topic_key: "patronus-inject".to_string(),
+        project: None,
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
+
+    // Index it
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    let memory_id = format!("global/{}", memory.topic_key);
+    let embed_text = format!("{}: {}", memory.title, memory.content);
+    let embedding = pensieve::embedder::try_embed(&embed_text);
+    let _ = idx.upsert(
+        &memory_id,
+        &memory.title,
+        &memory.content,
+        None,
+        &memory.tags,
+        embedding.as_deref(),
+    );
+
+    // Run inject with --query flag
+    let result = pensieve::ops::inject::run_inject(
+        &config,
+        Some("patronus".to_string()),
+        None,
+        None,
+        None,
+    )
+    .unwrap();
+
+    assert!(
+        result.contains("Patronus Charm"),
+        "inject should find indexed memory, got: {result}"
+    );
+    assert!(result.contains("[Pensieve:"), "should have compact format header");
+}
+
+#[test]
+fn test_inject_empty_result() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config_inject_enabled(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Index exists but no memories match
+    let _idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+
+    let result = pensieve::ops::inject::run_inject(
+        &config,
+        Some("nonexistent query".to_string()),
+        None,
+        None,
+        None,
+    )
+    .unwrap();
+
+    assert!(result.is_empty(), "inject with no matches should return empty");
+}
+
+#[test]
+fn test_inject_json_format() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config_inject_enabled(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save and index a memory
+    let input = pensieve::ops::save::SaveInput {
+        content: "Expelliarmus disarming charm".to_string(),
+        title: "Expelliarmus".to_string(),
+        memory_type: pensieve::types::MemoryType::HowItWorks,
+        topic_key: "expelliarmus-inject".to_string(),
+        project: None,
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    let memory_id = format!("global/{}", memory.topic_key);
+    let embed_text = format!("{}: {}", memory.title, memory.content);
+    let embedding = pensieve::embedder::try_embed(&embed_text);
+    let _ = idx.upsert(
+        &memory_id,
+        &memory.title,
+        &memory.content,
+        None,
+        &memory.tags,
+        embedding.as_deref(),
+    );
+
+    let result = pensieve::ops::inject::run_inject(
+        &config,
+        Some("expelliarmus".to_string()),
+        None,
+        None,
+        Some("json"),
+    )
+    .unwrap();
+
+    // JSON format should parse
+    let parsed: serde_json::Value = serde_json::from_str(&result)
+        .unwrap_or_else(|_| panic!("should be valid JSON, got: {result}"));
+    assert!(parsed.is_array(), "should return JSON array");
+}
+
+#[test]
+fn test_inject_no_stderr() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config_inject_enabled(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Run inject via binary and capture stderr
+    let bin = env!("CARGO_BIN_EXE_pensieve");
+    let output = std::process::Command::new(bin)
+        .arg("--memory-dir")
+        .arg(dir.path().to_str().unwrap())
+        .arg("inject")
+        .arg("--query")
+        .arg("test")
+        .output()
+        .expect("failed to run pensieve inject");
+
+    assert!(output.status.success(), "inject should exit 0");
+    assert!(
+        output.stderr.is_empty(),
+        "inject should produce no stderr, got: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn test_inject_stdin_json() {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let dir = TempDir::new().unwrap();
+    let mut config = test_config_inject_enabled(&dir);
+    config.inject.relevance_threshold = 0.0; // Accept any score for testing
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save and index a memory
+    let input = pensieve::ops::save::SaveInput {
+        content: "Lumos lights up the wand".to_string(),
+        title: "Lumos Charm".to_string(),
+        memory_type: pensieve::types::MemoryType::HowItWorks,
+        topic_key: "lumos-stdin".to_string(),
+        project: None,
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    let memory_id = format!("global/{}", memory.topic_key);
+    let embed_text = format!("{}: {}", memory.title, memory.content);
+    let embedding = pensieve::embedder::try_embed(&embed_text);
+    let _ = idx.upsert(
+        &memory_id,
+        &memory.title,
+        &memory.content,
+        None,
+        &memory.tags,
+        embedding.as_deref(),
+    );
+
+    // Test via binary with stdin JSON (simulating Claude Code hook)
+    let bin = env!("CARGO_BIN_EXE_pensieve");
+    let mut child = std::process::Command::new(bin)
+        .arg("--memory-dir")
+        .arg(dir.path().to_str().unwrap())
+        .arg("inject")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to start pensieve inject");
+
+    let stdin = child.stdin.as_mut().expect("failed to open stdin");
+    stdin
+        .write_all(b"{\"prompt\":\"lumos\",\"hook_event_name\":\"UserPromptSubmit\"}")
+        .expect("failed to write stdin");
+    drop(child.stdin.take());
+
+    let output = child.wait_with_output().expect("failed to wait");
+    assert!(output.status.success(), "inject should exit 0");
+    // Note: inject.enabled defaults to false in the binary, so it will return empty
+    // unless we pass config. The binary test just verifies no crash and exit 0.
+    assert!(
+        output.stderr.is_empty(),
+        "inject should produce no stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn test_configure_inject_enabled() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Enable inject
+    let new_config =
+        pensieve::ops::configure::configure(&config, None, None, None, Some(true), true).unwrap();
+    assert!(new_config.inject.enabled);
+
+    // Disable inject
+    let new_config =
+        pensieve::ops::configure::configure(&config, None, None, None, Some(false), true).unwrap();
+    assert!(!new_config.inject.enabled);
+}
+
+#[test]
+fn test_inject_threshold() {
+    let dir = TempDir::new().unwrap();
+    let mut config = test_config_inject_enabled(&dir);
+    config.inject.relevance_threshold = 999.0; // Impossibly high threshold
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save and index a memory
+    let input = pensieve::ops::save::SaveInput {
+        content: "Threshold test content".to_string(),
+        title: "Threshold Test".to_string(),
+        memory_type: pensieve::types::MemoryType::Discovery,
+        topic_key: "threshold-test".to_string(),
+        project: None,
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    let memory_id = format!("global/{}", memory.topic_key);
+    let embed_text = format!("{}: {}", memory.title, memory.content);
+    let embedding = pensieve::embedder::try_embed(&embed_text);
+    let _ = idx.upsert(
+        &memory_id,
+        &memory.title,
+        &memory.content,
+        None,
+        &memory.tags,
+        embedding.as_deref(),
+    );
+
+    // High threshold should filter everything out
+    let result = pensieve::ops::inject::run_inject(
+        &config,
+        Some("threshold".to_string()),
+        None,
+        None,
+        None,
+    )
+    .unwrap();
+    assert!(result.is_empty(), "high threshold should filter all results");
 }

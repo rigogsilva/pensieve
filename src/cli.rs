@@ -197,6 +197,10 @@ pub enum Command {
         #[arg(long)]
         vector_weight: Option<f64>,
 
+        /// Enable or disable auto-inject
+        #[arg(long)]
+        inject_enabled: Option<bool>,
+
         /// Dry run
         #[arg(long)]
         dry_run: bool,
@@ -265,6 +269,28 @@ pub enum Command {
         /// Source agent
         #[arg(long)]
         source: Option<String>,
+    },
+    /// Auto-inject relevant memories (for hook integration)
+    Inject {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
+        /// Direct query (fallback when stdin is empty)
+        #[arg(long)]
+        query: Option<String>,
+
+        /// Filter by project
+        #[arg(long)]
+        project: Option<String>,
+
+        /// Max results
+        #[arg(long)]
+        limit: Option<usize>,
+
+        /// Output format: compact or json
+        #[arg(long)]
+        format: Option<String>,
     },
     /// Set up pensieve for AI agents
     Setup {

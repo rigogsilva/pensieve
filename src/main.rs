@@ -246,9 +246,20 @@ async fn main() {
             }
         }
 
-        Command::Configure { output, memory_dir, keyword_weight, vector_weight, dry_run } => {
+        Command::Configure {
+            output,
+            memory_dir,
+            keyword_weight,
+            vector_weight,
+            inject_enabled,
+            dry_run,
+        } => {
             let format = output.as_ref().unwrap_or(&cli.output);
-            if memory_dir.is_none() && keyword_weight.is_none() && vector_weight.is_none() {
+            if memory_dir.is_none()
+                && keyword_weight.is_none()
+                && vector_weight.is_none()
+                && inject_enabled.is_none()
+            {
                 output_result(format, &cfg);
             } else {
                 match ops::configure::configure(
@@ -256,6 +267,7 @@ async fn main() {
                     memory_dir.as_deref(),
                     keyword_weight,
                     vector_weight,
+                    inject_enabled,
                     dry_run,
                 ) {
                     Ok(new_cfg) => output_result(format, &new_cfg),
@@ -277,6 +289,21 @@ async fn main() {
                     std::process::exit(1);
                 }
             }
+        }
+
+        Command::Inject { output, query, project, limit, format } => {
+            let out_format = output.as_ref().unwrap_or(&cli.output);
+            if let Ok(result) =
+                ops::inject::run_inject(&cfg, query, project, limit, format.as_deref())
+            {
+                if !result.is_empty() {
+                    match out_format {
+                        OutputFormat::Json => output_json(&result),
+                        OutputFormat::Human => print!("{result}"),
+                    }
+                }
+            }
+            // Errors are silently ignored — never block the agent
         }
 
         Command::Setup { agent } => match ops::setup::run_setup(agent.as_deref()) {

@@ -157,6 +157,31 @@ pub struct PensieveConfig {
     pub memory_dir: PathBuf,
     #[serde(default)]
     pub retrieval: RetrievalConfig,
+    #[serde(default)]
+    pub inject: InjectConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InjectConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_relevance_threshold")]
+    pub relevance_threshold: f64,
+    #[serde(default = "default_max_results")]
+    pub max_results: usize,
+    #[serde(default = "default_inject_format")]
+    pub format: String,
+}
+
+impl Default for InjectConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            relevance_threshold: default_relevance_threshold(),
+            max_results: default_max_results(),
+            format: default_inject_format(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,7 +200,11 @@ impl Default for RetrievalConfig {
 
 impl Default for PensieveConfig {
     fn default() -> Self {
-        Self { memory_dir: default_memory_dir(), retrieval: RetrievalConfig::default() }
+        Self {
+            memory_dir: default_memory_dir(),
+            retrieval: RetrievalConfig::default(),
+            inject: InjectConfig::default(),
+        }
     }
 }
 
@@ -189,4 +218,16 @@ fn default_keyword_weight() -> f64 {
 
 fn default_vector_weight() -> f64 {
     0.3
+}
+
+fn default_relevance_threshold() -> f64 {
+    0.3
+}
+
+fn default_max_results() -> usize {
+    3
+}
+
+fn default_inject_format() -> String {
+    "compact".to_string()
 }

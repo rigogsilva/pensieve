@@ -21,6 +21,7 @@ fn bin_path() -> String {
         .unwrap_or_else(|| "pensieve".to_string())
 }
 
+#[allow(clippy::too_many_lines)]
 fn unified_skill_content(bin: &str) -> String {
     format!(
         r#"---
@@ -132,18 +133,31 @@ Both have identical capabilities. MCP tools are preferred when available.
 
 If markers already exist, replace the content between them with the block above.
 
-## Step 3: Set up auto-inject hooks (if supported)
+## Step 3: Set up hooks
 
-If your agent supports pre-prompt hooks, set them up so relevant memories are
-automatically injected before every prompt — no manual recall needed.
+### SessionStart hook (always set up)
+
+All agents that support session hooks should wire `SessionStart` to load context
+at session start and after compaction. This is NOT opt-in — always set it up.
+
+### Auto-inject hook (ask the user first)
+
+Ask the user: "Would you like to enable auto-inject? This automatically recalls
+relevant memories before every prompt. You can disable it anytime with
+`{bin} configure --inject-enabled false`."
+
+If the user says **yes**:
+1. Run: `{bin} configure --inject-enabled true`
+2. Add the pre-prompt hook for your agent (see below)
+
+If the user says **no**: skip the pre-prompt hook, but still add the
+SessionStart hook above.
 
 ### Claude Code
 
 Read `~/.claude/settings.json`. If it doesn't exist, create it. If it exists,
-parse the JSON and merge (don't replace existing hooks).
-
-Add these two hooks if not already present (check for "pensieve" in existing
-hook commands to avoid duplicates):
+parse the JSON and merge (don't replace existing hooks). Check for "pensieve"
+in existing hook commands to avoid duplicates.
 
 ```json
 {{
@@ -153,7 +167,7 @@ hook commands to avoid duplicates):
         "hooks": [
           {{
             "type": "command",
-            "command": "{bin} recall \"$USER_PROMPT\" --output json --limit 3 2>/dev/null || true"
+            "command": "{bin} inject --limit 3"
           }}
         ]
       }}
@@ -172,15 +186,73 @@ hook commands to avoid duplicates):
 }}
 ```
 
-The `UserPromptSubmit` hook auto-injects relevant memories before every prompt.
-The `SessionStart` hook loads context at session start and after compaction.
-The `2>/dev/null || true` ensures hooks never block if pensieve has issues.
+The `UserPromptSubmit` hook reads the prompt from stdin (JSON) and injects
+relevant memories. Only add this hook if the user opted in to auto-inject.
+The `SessionStart` hook is always added.
 
-### Codex CLI or other agents
+### Cursor
 
-If your agent supports pre-prompt hooks, add equivalent hooks using the same
-commands. If not, skip this step — the Memory Protocol in Step 2 tells you when
-to manually recall.
+Read `~/.cursor/hooks.json`. If it doesn't exist, create it. Merge with
+existing hooks. Check for "pensieve" to avoid duplicates.
+
+```json
+{{
+  "version": 1,
+  "hooks": {{
+    "beforeSubmitPrompt": [
+      {{
+        "command": "{bin} inject --limit 3"
+      }}
+    ]
+  }}
+}}
+```
+
+Only add `beforeSubmitPrompt` if the user opted in to auto-inject.
+
+### Gemini CLI
+
+Read `~/.gemini/settings.json`. If it doesn't exist, create it. Merge with
+existing hooks. Check for "pensieve" to avoid duplicates.
+
+```json
+{{
+  "hooks": {{
+    "BeforeAgent": [
+      {{
+        "type": "command",
+        "command": "{bin} inject --limit 3"
+      }}
+    ],
+    "SessionStart": [
+      {{
+        "type": "command",
+        "command": "{bin} context --output json 2>/dev/null || true"
+      }}
+    ]
+  }}
+}}
+```
+
+Only add `BeforeAgent` if the user opted in. `SessionStart` is always added.
+
+### Codex CLI
+
+Read `.codex/hooks.json`. Only `SessionStart` is available (no pre-prompt hook
+yet). Always add it:
+
+```json
+{{
+  "hooks": {{
+    "SessionStart": [
+      {{
+        "type": "command",
+        "command": "{bin} context --output json 2>/dev/null || true"
+      }}
+    ]
+  }}
+}}
+```
 
 ## Step 4: Verify
 
