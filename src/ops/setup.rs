@@ -248,8 +248,8 @@ Only add `BeforeAgent` if the user opted in. `SessionStart` is always added.
 
 ### Codex CLI
 
-Read `.codex/hooks.json`. Only `SessionStart` is available (no pre-prompt hook
-yet). Always add it:
+Read `~/.codex/hooks.json` (global, NOT `./.codex/hooks.json` in the workspace).
+Only `SessionStart` is available (no pre-prompt hook yet). Always add it:
 
 ```json
 {{
