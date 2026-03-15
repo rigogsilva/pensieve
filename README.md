@@ -83,12 +83,10 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-aarch64-apple-darwin -o pensieve
-chmod +x pensieve && sudo mv pensieve /usr/local/bin/
+mkdir -p ~/bin && curl -fsSL https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-aarch64-apple-darwin -o ~/bin/pensieve && chmod +x ~/bin/pensieve
 
 # Linux (x86_64)
-curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-unknown-linux-gnu -o pensieve
-chmod +x pensieve && sudo mv pensieve /usr/local/bin/
+mkdir -p ~/bin && curl -fsSL https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-unknown-linux-gnu -o ~/bin/pensieve && chmod +x ~/bin/pensieve
 
 # From source (macOS Intel, Linux aarch64, or any platform with Rust)
 cargo install --git https://github.com/rigogsilva/pensieve
