@@ -8,7 +8,7 @@ struct AgentInfo {
     display_name: &'static str,
     config_dir: PathBuf,
     skills_dir: PathBuf,
-    skill_filename: &'static str,
+    skill_dir_name: &'static str,
     skill_content: String,
 }
 
@@ -164,7 +164,7 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             display_name: "Claude Code",
             config_dir: home.join(".claude"),
             skills_dir: home.join(".claude").join("skills"),
-            skill_filename: "pensieve-setup.md",
+            skill_dir_name: "pensieve-setup",
             skill_content: claude_skill_content(),
         });
     }
@@ -175,7 +175,7 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             display_name: "Codex CLI",
             config_dir: home.join(".codex"),
             skills_dir: home.join(".codex").join("skills"),
-            skill_filename: "pensieve-setup.md",
+            skill_dir_name: "pensieve-setup",
             skill_content: codex_skill_content(),
         });
     }
@@ -191,7 +191,7 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             display_name: "Claude Desktop",
             config_dir,
             skills_dir: home.join(".claude").join("skills"),
-            skill_filename: "pensieve-setup-desktop.md",
+            skill_dir_name: "pensieve-setup-desktop",
             skill_content: claude_desktop_skill_content(),
         });
     }
@@ -213,13 +213,14 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
 
     for agent in &agents {
         if agent.config_dir.exists() {
-            std::fs::create_dir_all(&agent.skills_dir)?;
-            let skill_path = agent.skills_dir.join(agent.skill_filename);
+            let skill_dir = agent.skills_dir.join(agent.skill_dir_name);
+            std::fs::create_dir_all(&skill_dir)?;
+            let skill_path = skill_dir.join("SKILL.md");
             std::fs::write(&skill_path, &agent.skill_content)?;
             println!(
                 "  \u{2713} {} \u{2014} added skill to {}/",
                 agent.display_name,
-                agent.skills_dir.display()
+                skill_dir.display()
             );
             any_installed = true;
         } else {
