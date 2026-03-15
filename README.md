@@ -21,15 +21,28 @@ Pensieve is designed for agents first, humans second. Every command has
 from files or stdin, `--dry-run` for safe previews, and skill files that teach
 agents the Memory Protocol — judgment that can't come from `--help` alone.
 
-**Research-driven retrieval.** We studied how Claude Code's built-in memory
-works, analyzed [OpenClaw](https://github.com/claw-project/openclaw)'s two-tier
-memory system (long-term + session), and ran empirical tests comparing regex
-keyword search vs pure vector/semantic search. The finding: an AI agent with
-regex consistently outperforms pure vector search for memory recall — the agent
-itself is the semantic layer. The result is a hybrid approach where BM25 keyword
-search (70%) is primary and vector similarity (30%) fills the gaps for fuzzy
-queries like "how do we deploy" matching a memory titled "production release
-process".
+**Research-driven retrieval.** Pensieve's hybrid search is informed by
+real-world findings from teams building agent tooling:
+
+- **Claude Code dropped RAG for grep.** Boris Cherny, creator of Claude Code,
+  [shared](https://www.latent.space/p/claude-code) that early versions used a
+  local vector DB, but agentic search (grep/glob/read) "outperformed everything.
+  By a lot." The agent itself is the semantic layer — it knows what to grep for.
+- **Cursor found the sweet spot is both.** Cursor's
+  [A/B tests](https://cursor.com/blog/semsearch) showed semantic search adds
+  ~12.5% accuracy on top of grep, especially in large codebases. Neither alone
+  is sufficient.
+- **OpenClaw's two-tier memory.**
+  [OpenClaw](https://docs.openclaw.ai/concepts/memory) uses daily logs + curated
+  long-term memory, with hybrid retrieval (vector + BM25) and temporal decay.
+  Pensieve adopts the same two-tier pattern (sessions + long-term) and hybrid
+  retrieval, but flips the weights: 70% keyword / 30% vector, because for
+  personal memory stores (<500 entries), keyword precision matters more than
+  semantic breadth.
+
+The result: BM25 keyword search is primary, vector similarity fills the gaps for
+fuzzy queries like "how do we deploy" matching a memory titled "production
+release process".
 
 **Markdown as source of truth.** No proprietary database. Every memory is a
 readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
