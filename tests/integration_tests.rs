@@ -708,19 +708,11 @@ fn test_inject_query_flag() {
     );
 
     // Run inject with --query flag
-    let result = pensieve::ops::inject::run_inject(
-        &config,
-        Some("patronus".to_string()),
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let result =
+        pensieve::ops::inject::run_inject(&config, Some("patronus".to_string()), None, None, None)
+            .unwrap();
 
-    assert!(
-        result.contains("Patronus Charm"),
-        "inject should find indexed memory, got: {result}"
-    );
+    assert!(result.contains("Patronus Charm"), "inject should find indexed memory, got: {result}");
     assert!(result.contains("[Pensieve:"), "should have compact format header");
 }
 
@@ -936,13 +928,8 @@ fn test_inject_threshold() {
     );
 
     // High threshold should filter everything out
-    let result = pensieve::ops::inject::run_inject(
-        &config,
-        Some("threshold".to_string()),
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let result =
+        pensieve::ops::inject::run_inject(&config, Some("threshold".to_string()), None, None, None)
+            .unwrap();
     assert!(result.is_empty(), "high threshold should filter all results");
 }

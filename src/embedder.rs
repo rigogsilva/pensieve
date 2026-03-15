@@ -6,8 +6,8 @@ static EMBEDDER: OnceLock<Option<Mutex<TextEmbedding>>> = OnceLock::new();
 
 pub fn embed(text: &str) -> Result<Vec<f32>> {
     let lock = EMBEDDER.get_or_init(|| {
-        let opts = InitOptions::new(EmbeddingModel::BGESmallENV15)
-            .with_show_download_progress(true);
+        let opts =
+            InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true);
         TextEmbedding::try_new(opts).ok().map(Mutex::new)
     });
 

@@ -5,12 +5,11 @@ use std::sync::Mutex;
 
 // Short words that add noise to FTS5 keyword searches
 const STOPWORDS: &[&str] = &[
-    "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "do", "for",
-    "from", "had", "has", "have", "he", "her", "his", "how", "i", "if", "in",
-    "is", "it", "its", "me", "my", "no", "not", "of", "on", "or", "our", "out",
-    "she", "so", "than", "that", "the", "their", "them", "then", "there", "they",
-    "this", "to", "up", "us", "was", "we", "what", "when", "where", "which",
-    "who", "will", "with", "you", "your",
+    "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "do", "for", "from", "had",
+    "has", "have", "he", "her", "his", "how", "i", "if", "in", "is", "it", "its", "me", "my", "no",
+    "not", "of", "on", "or", "our", "out", "she", "so", "than", "that", "the", "their", "them",
+    "then", "there", "they", "this", "to", "up", "us", "was", "we", "what", "when", "where",
+    "which", "who", "will", "with", "you", "your",
 ];
 
 /// Build an FTS5 query from a natural language string.
@@ -155,7 +154,6 @@ impl Index {
     }
 
     pub fn clear(&self) -> Result<()> {
-
         let conn =
             self.conn.lock().map_err(|e| PensieveError::Config(format!("lock poisoned: {e}")))?;
 
