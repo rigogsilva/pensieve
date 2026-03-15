@@ -77,35 +77,54 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 └── CONTEXT.md                 # Auto-generated context snapshot
 ```
 
-## Install
+## Getting started
 
-### Download (recommended)
-
-Download the latest binary for your platform from
-[GitHub Releases](https://github.com/rigogsilva/pensieve/releases/latest):
+### 1. Install
 
 ```bash
 # macOS (Apple Silicon)
 curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-aarch64-apple-darwin -o pensieve
-chmod +x pensieve
-sudo mv pensieve /usr/local/bin/
+chmod +x pensieve && sudo mv pensieve /usr/local/bin/
 
 # macOS (Intel)
 curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-apple-darwin -o pensieve
-chmod +x pensieve
-sudo mv pensieve /usr/local/bin/
+chmod +x pensieve && sudo mv pensieve /usr/local/bin/
 
 # Linux (x86_64)
 curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-unknown-linux-gnu -o pensieve
-chmod +x pensieve
-sudo mv pensieve /usr/local/bin/
-```
+chmod +x pensieve && sudo mv pensieve /usr/local/bin/
 
-### From source (requires Rust)
-
-```bash
+# From source (requires Rust)
 cargo install --git https://github.com/rigogsilva/pensieve
 ```
+
+### 2. Connect to your agents
+
+```bash
+pensieve setup
+```
+
+This detects which AI agents you have installed and adds a setup skill to each
+one:
+
+```
+Found agents:
+  ✓ Claude Code — added skill to ~/.claude/skills/
+  ✓ Codex CLI — added skill to ~/.codex/skills/
+  ✗ Cursor — not detected
+
+Start a new session and tell your agent: "set up pensieve"
+```
+
+### 3. Tell your agent to finish setup
+
+Open a new session in your AI agent and say:
+
+> Set up pensieve
+
+The agent will run the setup skill — configuring MCP, adding the Memory Protocol
+to its instruction file, and verifying everything works. From that point on,
+every session auto-loads your prior knowledge.
 
 ### Update
 
@@ -406,108 +425,28 @@ pensieve configure --keyword-weight 0.5 --vector-weight 0.5
 The embedding model (~127MB) downloads automatically on first use. If offline,
 keyword search still works — vector search degrades gracefully.
 
-## Connect your AI agent
+## How agents use Pensieve
 
-### Step 1: Add MCP config
+Once set up, this happens automatically every session:
 
-Tell your agent how to reach Pensieve:
-
-**Claude Code** — add to `~/.claude/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "pensieve": {
-      "command": "pensieve",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-**Codex CLI** — add to your Codex MCP config:
-
-```json
-{
-  "mcpServers": {
-    "pensieve": {
-      "command": "pensieve",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-**Cursor** — create `.cursor/mcp.json` in your project:
-
-```json
-{
-  "mcpServers": {
-    "pensieve": {
-      "command": "pensieve",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-**VS Code Copilot** — add to `.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "pensieve": {
-      "command": "pensieve",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-### Step 2: Teach agents the Memory Protocol
-
-Copy the skill files from `.ai/skills/` into your project or agent config so
-agents know _when_ and _how_ to use memory — not just that the tools exist:
-
-- **[`pensieve-memory-protocol.md`](.ai/skills/pensieve-memory-protocol.md)** —
-  tells agents to call `get_context()` at session start, when to save different
-  memory types, when to search, and to call `end_session()` before closing. This
-  is the judgment layer that `--help` can't provide.
-- **[`pensieve-setup.md`](.ai/skills/pensieve-setup.md)** — first-time setup
-  guidance for agents encountering Pensieve for the first time.
-
-For **Claude Code**, reference the protocol in your project's `CLAUDE.md`:
-
-```markdown
-@.ai/skills/pensieve-memory-protocol.md
-```
-
-For **Codex** or other agents, reference it in `AGENTS.md`:
-
-```markdown
-## Memory Protocol
-
-See .ai/skills/pensieve-memory-protocol.md
-```
-
-### Step 3: Auto-bootstrapping
-
-Once configured, this happens automatically on every session:
-
-1. Agent calls `get_context()` → gets last 3 sessions, preferences, recent
-   gotchas/decisions
-2. Pensieve writes `CONTEXT.md` to the memory directory — agents that auto-load
-   files (via `@` imports) get memory with zero tool calls
-3. Agent works, saves discoveries along the way
-4. Agent calls `end_session()` before closing → next session picks up where this
-   one left off
+1. **Session start** — agent calls `pensieve context` → gets last 3 sessions,
+   preferences, recent gotchas/decisions. Also writes `CONTEXT.md` for agents
+   that auto-load files.
+2. **During work** — agent saves discoveries: `pensieve save --type gotcha ...`
+3. **Search** — agent recalls prior knowledge: `pensieve recall "query"`
+4. **Session end** — agent calls `pensieve end-session --summary "..."` → next
+   session picks up where this one left off
 
 The agent never starts from zero again. Even after context compaction, a
-`get_context()` call recovers prior knowledge.
+`pensieve context` call recovers prior knowledge.
 
-### Without MCP
+### Manual agent setup
 
-Any agent can read memory files directly — no MCP required:
+If `pensieve setup` doesn't detect your agent, you can configure it manually.
+See [`.ai/mcp-configs/README.md`](.ai/mcp-configs/README.md) for MCP config
+snippets for Claude Code, Codex, Cursor, Copilot, and Gemini CLI.
+
+For any agent without MCP, memory files are plain markdown:
 
 ```bash
 cat ~/.pensieve/memory/global/*.md
