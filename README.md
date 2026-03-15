@@ -43,13 +43,14 @@ real-world findings from teams building agent tooling:
   [OpenClaw](https://docs.openclaw.ai/concepts/memory) uses daily logs + curated
   long-term memory, with hybrid retrieval (70% vector / 30% BM25) and temporal
   decay. Pensieve adopts the same two-tier pattern (sessions + long-term) and
-  hybrid retrieval, but flips the default weights to 70% keyword / 30% vector —
-  for personal memory stores (<500 entries), keyword precision matters more than
-  semantic breadth. Weights are tunable via `pensieve configure`.
+  hybrid retrieval. On the author's real memory corpus, a keyword-heavy blend
+  performed better than vector-heavy settings, which matches the intuition that
+  personal memory stores often behave more like named note lookup than open-ended
+  semantic search. Weights are tunable via `pensieve configure`.
 
-The result: BM25 keyword search is primary, vector similarity fills the gaps for
-fuzzy queries like "how do we deploy" matching a memory titled "production
-release process". Configurable to taste.
+The current result: BM25 keyword search is primary, vector similarity fills the
+gaps for fuzzier queries. The default blend is `70%` keyword / `30%` vector,
+chosen from a read-only sweep over the real memory corpus. Configurable to taste.
 
 **Markdown as source of truth.** No proprietary database. Every memory is a
 readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
@@ -378,8 +379,8 @@ View or update persistent configuration:
 ```bash
 pensieve configure                          # show current config
 pensieve configure --memory-dir ~/path      # set memory directory
-pensieve configure --keyword-weight 0.8     # tune retrieval
-pensieve configure --vector-weight 0.2
+pensieve configure --keyword-weight 0.7     # tune retrieval
+pensieve configure --vector-weight 0.3
 pensieve configure --inject-enabled true    # enable auto-inject
 pensieve configure --inject-enabled false   # disable auto-inject
 ```
@@ -439,7 +440,9 @@ good library index:
 - **Vector (semantic)** — embedding similarity via fastembed + sqlite-vec. Finds
   "defensive spells" when the memory says "how to cast a Patronus charm".
 
-Results are blended with configurable weights (default 70% keyword, 30% vector):
+Results are blended with configurable weights. The current default is `70%`
+keyword / `30%` vector because the real-memory sweep favored a keyword-heavy
+mix on the author's actual corpus:
 
 ```bash
 # Tune weights
@@ -448,6 +451,31 @@ pensieve configure --keyword-weight 0.5 --vector-weight 0.5
 
 The embedding model (~127MB) downloads automatically on first use. If offline,
 keyword search still works — vector search degrades gracefully.
+
+To reproduce the benchmark used for tuning:
+
+```bash
+cargo test benchmark_recall_quality -- --ignored --nocapture
+cargo run --bin update_retrieval_benchmark_readme
+```
+
+<!-- retrieval-benchmark:start -->
+Latest benchmark snapshot from `cargo test benchmark_recall_quality -- --ignored --nocapture`:
+
+- Semantic stress, `0.7 / 0.3`: Top-1 `0.779`, Top-3 `0.912`, Top-5 `0.956`, MRR `0.842`
+- Lexical-heavy, `0.7 / 0.3`: Top-1 `1.000`, Top-3 `1.000`, Top-5 `1.000`, MRR `1.000`
+- Lexical-heavy, `0.2 / 0.8`: Top-1 `0.980`, Top-3 `1.000`, Top-5 `1.000`, MRR `0.990`
+
+Use `cargo run --bin update_retrieval_benchmark_readme` to refresh this block.
+<!-- retrieval-benchmark:end -->
+
+On the author's real memory corpus, a read-only weight sweep favored
+`0.7 keyword / 0.3 vector`, reaching roughly:
+
+- Top-1: `0.984`
+- Top-3: `1.000`
+- Top-5: `1.000`
+- MRR: `0.992`
 
 ## How agents use Pensieve
 

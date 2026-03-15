@@ -79,14 +79,11 @@ async fn main() {
             let title = title.expect("--title is required");
             let content = content.expect("--content is required");
             let topic_key = topic_key.expect("--topic-key is required");
-            let memory_type = match r#type.as_deref().unwrap_or("discovery").parse() {
-                Ok(t) => t,
-                Err(_) => {
-                    eprintln!(
-                        "Invalid memory type. Use: discovery, gotcha, decision, preference, how-it-works"
-                    );
-                    std::process::exit(1);
-                }
+            let Ok(memory_type) = r#type.as_deref().unwrap_or("discovery").parse() else {
+                eprintln!(
+                    "Invalid memory type. Use: discovery, gotcha, decision, preference, how-it-works"
+                );
+                std::process::exit(1);
             };
             let tags_vec = tags
                 .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
@@ -124,7 +121,13 @@ async fn main() {
                                 Some(p) => format!("projects/{}/{}", p, memory.topic_key),
                                 None => format!("global/{}", memory.topic_key),
                             };
-                            let embed_text = format!("{}: {}", memory.title, memory.content);
+                            let embed_text = embedder::build_embedding_text(
+                                &memory.title,
+                                &memory.content,
+                                &memory.memory_type,
+                                memory.project.as_deref(),
+                                &memory.tags,
+                            );
                             let embedding = embedder::try_embed(&embed_text);
                             let _ = idx.upsert(
                                 &memory_id,
@@ -298,8 +301,7 @@ async fn main() {
             }
         }
 
-        Command::Inject { output, query, project, limit, format } => {
-            let out_format = output.as_ref().unwrap_or(&cli.output);
+        Command::Inject { output: _, query, project, limit, format } => {
             if let Ok(result) =
                 ops::inject::run_inject(&cfg, query, project, limit, format.as_deref())
             {

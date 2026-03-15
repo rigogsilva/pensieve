@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use tempfile::TempDir;
 
 // Helper to create a config pointing to a temp directory
@@ -14,6 +16,462 @@ fn test_config_inject_enabled(dir: &TempDir) -> pensieve::types::PensieveConfig 
     let mut cfg = test_config(dir);
     cfg.inject.enabled = true;
     cfg
+}
+
+fn index_memory(config: &pensieve::types::PensieveConfig, memory: &pensieve::types::Memory) {
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    let memory_id = match &memory.project {
+        Some(project) => format!("projects/{project}/{}", memory.topic_key),
+        None => format!("global/{}", memory.topic_key),
+    };
+    let embed_text = pensieve::embedder::build_embedding_text(
+        &memory.title,
+        &memory.content,
+        &memory.memory_type,
+        memory.project.as_deref(),
+        &memory.tags,
+    );
+    let embedding = pensieve::embedder::try_embed(&embed_text);
+    let _ = idx.upsert(
+        &memory_id,
+        &memory.title,
+        &memory.content,
+        memory.project.as_deref(),
+        &memory.tags,
+        embedding.as_deref(),
+    );
+}
+
+#[derive(Clone)]
+struct RetrievalFixture {
+    topic_key: &'static str,
+    title: &'static str,
+    content: &'static str,
+    memory_type: pensieve::types::MemoryType,
+    tags: &'static [&'static str],
+    exact_queries: &'static [&'static str],
+    semantic_queries: &'static [&'static str],
+}
+
+struct RetrievalMetrics {
+    top1: f64,
+    top3: f64,
+    top5: f64,
+    mrr: f64,
+}
+
+struct RetrievalQueryCase {
+    expected_topic_key: &'static str,
+    query: String,
+}
+
+#[allow(clippy::too_many_lines)]
+fn retrieval_fixtures() -> Vec<RetrievalFixture> {
+    use pensieve::types::MemoryType::{Decision, Discovery, Gotcha, HowItWorks, Preference};
+
+    vec![
+        RetrievalFixture {
+            topic_key: "rust-formatting",
+            title: "Rust formatting workflow",
+            content: "Run cargo fmt before committing so rustfmt keeps the codebase style consistent across files.",
+            memory_type: HowItWorks,
+            tags: &["rust", "formatting"],
+            exact_queries: &["cargo fmt rustfmt style", "rust formatting workflow"],
+            semantic_queries: &[
+                "how should we autoformat rust code before a commit",
+                "what keeps the code style consistent in this rust repo",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "cas-revision-guard",
+            title: "Revision conflict protection",
+            content: "Use expected_revision when updating a memory so concurrent writes fail instead of silently overwriting newer content.",
+            memory_type: Decision,
+            tags: &["revision", "cas"],
+            exact_queries: &["expected_revision concurrent writes", "revision conflict protection"],
+            semantic_queries: &[
+                "how do we avoid overwriting a newer memory update",
+                "what is the optimistic locking mechanism for edits",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "project-scope-guideline",
+            title: "Project scoped memories",
+            content: "Store implementation details under a project so unrelated work does not pollute the global memory namespace.",
+            memory_type: Decision,
+            tags: &["project", "scope"],
+            exact_queries: &[
+                "project scoped memories global namespace",
+                "implementation details under a project",
+            ],
+            semantic_queries: &[
+                "where should repo specific notes live so they do not clutter shared memory",
+                "how do we isolate memories for one codebase",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "inject-compact-output",
+            title: "Compact injection format",
+            content: "Injection works best when the output is compact because hook consumers need short snippets instead of full documents.",
+            memory_type: Preference,
+            tags: &["inject", "output"],
+            exact_queries: &[
+                "compact injection format hook consumers",
+                "short snippets instead of full documents",
+            ],
+            semantic_queries: &[
+                "why should auto injected context stay brief",
+                "what output style is best for hook based memory injection",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "fts-stopwords",
+            title: "FTS stopword filtering",
+            content: "Keyword search removes common stopwords and builds an OR query so meaningful terms still match even in natural language prompts.",
+            memory_type: HowItWorks,
+            tags: &["fts", "search"],
+            exact_queries: &["stopwords OR query meaningful terms", "fts stopword filtering"],
+            semantic_queries: &[
+                "how does keyword search handle filler words in a sentence",
+                "why can natural language prompts still hit the text index",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "memory-markdown-source",
+            title: "Markdown as source of truth",
+            content: "Each memory is stored as a markdown file with YAML frontmatter, and the database acts as a retrieval index rather than the canonical source.",
+            memory_type: HowItWorks,
+            tags: &["storage", "markdown"],
+            exact_queries: &[
+                "markdown file YAML frontmatter canonical source",
+                "database retrieval index canonical source",
+            ],
+            semantic_queries: &[
+                "is sqlite the main record or just a search helper",
+                "where is the authoritative memory data stored",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "reindex-after-corruption",
+            title: "Reindex after index drift",
+            content: "If the SQLite index falls behind the markdown files, run reindex to rebuild embeddings and keyword tables from disk.",
+            memory_type: Gotcha,
+            tags: &["reindex", "index"],
+            exact_queries: &[
+                "reindex rebuild embeddings keyword tables",
+                "sqlite index falls behind markdown files",
+            ],
+            semantic_queries: &[
+                "what should we do if the search database gets out of sync with memory files",
+                "how do we rebuild retrieval metadata from disk",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "session-summaries",
+            title: "Session summaries capture decisions",
+            content: "end-session writes a timestamped markdown summary so future sessions can load decisions and outcomes from prior work.",
+            memory_type: Discovery,
+            tags: &["session", "summary"],
+            exact_queries: &[
+                "end-session timestamped markdown summary",
+                "future sessions load decisions outcomes",
+            ],
+            semantic_queries: &[
+                "how are important choices from a work session carried forward",
+                "what command stores a wrap up note at the end of a session",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "validation-topic-key",
+            title: "Topic key validation",
+            content: "Topic keys must be lowercase alphanumeric with hyphens, and path traversal attempts are rejected before any file is written.",
+            memory_type: Gotcha,
+            tags: &["validation", "topic-key"],
+            exact_queries: &[
+                "topic keys lowercase alphanumeric hyphens",
+                "path traversal rejected before file is written",
+            ],
+            semantic_queries: &[
+                "what filename rules are enforced for memory ids",
+                "how does the tool prevent saving outside the memory directory",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "hybrid-weighting",
+            title: "Hybrid retrieval weights",
+            content: "Pensieve combines normalized BM25 keyword scores and vector similarity using configurable keyword and vector weights.",
+            memory_type: HowItWorks,
+            tags: &["hybrid", "weights"],
+            exact_queries: &[
+                "normalized BM25 vector similarity weights",
+                "hybrid retrieval weights",
+            ],
+            semantic_queries: &[
+                "how are lexical and embedding scores blended together",
+                "what controls the balance between keyword search and semantic search",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "inject-disabled-default",
+            title: "Injection is disabled by default",
+            content: "Auto injection returns nothing unless inject.enabled is true in config, which keeps agents from blocking on optional retrieval.",
+            memory_type: Preference,
+            tags: &["inject", "config"],
+            exact_queries: &[
+                "inject.enabled true returns nothing unless enabled",
+                "injection is disabled by default",
+            ],
+            semantic_queries: &[
+                "why might the injection command output nothing on a fresh install",
+                "what config switch turns on automatic memory injection",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "human-vs-json-output",
+            title: "Human and JSON output modes",
+            content: "Most commands can render either human friendly text or structured JSON so tools and people can both consume the results.",
+            memory_type: Discovery,
+            tags: &["output", "json"],
+            exact_queries: &["human friendly text structured JSON", "human and JSON output modes"],
+            semantic_queries: &[
+                "can this CLI return machine readable responses",
+                "how do commands support both scripts and humans",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "archive-vs-delete",
+            title: "Archive before delete when history matters",
+            content: "Archive preserves a memory and can mark it as superseded, while delete removes it entirely from storage and the index.",
+            memory_type: Decision,
+            tags: &["archive", "delete"],
+            exact_queries: &[
+                "archive superseded delete removes entirely",
+                "archive before delete when history matters",
+            ],
+            semantic_queries: &[
+                "when should we preserve an old memory instead of erasing it",
+                "what is the difference between removing and superseding a memory",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "context-bootstrap",
+            title: "Context bootstrap buckets",
+            content: "get-context returns recent sessions, preferences, gotchas, and decisions so an agent can start with the most important prior knowledge.",
+            memory_type: HowItWorks,
+            tags: &["context", "bootstrap"],
+            exact_queries: &[
+                "recent sessions preferences gotchas decisions",
+                "context bootstrap buckets",
+            ],
+            semantic_queries: &[
+                "what does the session start bootstrap include",
+                "how does an agent load the most relevant prior knowledge at the start",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "sqlite-vec-extension",
+            title: "sqlite-vec powers vector search",
+            content: "The index registers sqlite-vec as an SQLite extension so embeddings can be queried with nearest neighbor search over 384 dimensional vectors.",
+            memory_type: HowItWorks,
+            tags: &["sqlite-vec", "vector"],
+            exact_queries: &[
+                "sqlite-vec nearest neighbor 384 dimensional vectors",
+                "sqlite-vec powers vector search",
+            ],
+            semantic_queries: &[
+                "which component handles similarity lookup for embeddings",
+                "how are embedding vectors stored and queried in the index",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "confidence-metadata",
+            title: "Confidence metadata is optional",
+            content: "Memories may include high, medium, or low confidence to signal how strongly the agent trusts a recorded fact or recommendation.",
+            memory_type: Discovery,
+            tags: &["confidence", "metadata"],
+            exact_queries: &[
+                "high medium low confidence metadata",
+                "confidence metadata is optional",
+            ],
+            semantic_queries: &[
+                "how can a memory express uncertainty",
+                "is there a way to mark how trustworthy a saved fact is",
+            ],
+        },
+        RetrievalFixture {
+            topic_key: "config-location",
+            title: "Config lives under dot config",
+            content: "Pensieve stores configuration in config.toml under the user config directory, separate from the memory markdown files.",
+            memory_type: HowItWorks,
+            tags: &["config", "path"],
+            exact_queries: &[
+                "config.toml user config directory separate from memory files",
+                "config lives under dot config",
+            ],
+            semantic_queries: &[
+                "where are the settings stored compared with the actual memories",
+                "what file holds retrieval and injection configuration",
+            ],
+        },
+    ]
+}
+
+fn build_retrieval_corpus(config: &pensieve::types::PensieveConfig) {
+    pensieve::storage::ensure_dirs(config).unwrap();
+    for fixture in retrieval_fixtures() {
+        let input = pensieve::ops::save::SaveInput {
+            content: fixture.content.to_string(),
+            title: fixture.title.to_string(),
+            memory_type: fixture.memory_type,
+            topic_key: fixture.topic_key.to_string(),
+            project: None,
+            tags: fixture.tags.iter().map(|tag| (*tag).to_string()).collect(),
+            source: Some("benchmark".to_string()),
+            confidence: None,
+            expected_revision: None,
+            dry_run: false,
+        };
+        pensieve::ops::save::save_memory(config, input).unwrap();
+    }
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    pensieve::ops::reindex::reindex(config, &idx).unwrap();
+}
+
+fn title_query(text: &str) -> String {
+    text.to_ascii_lowercase()
+}
+
+fn topic_key_query(topic_key: &str) -> String {
+    topic_key.replace('-', " ")
+}
+
+fn semantic_stress_queries() -> Vec<RetrievalQueryCase> {
+    let mut cases = Vec::new();
+    for fixture in retrieval_fixtures() {
+        for query in fixture.exact_queries.iter().chain(fixture.semantic_queries.iter()) {
+            cases.push(RetrievalQueryCase {
+                expected_topic_key: fixture.topic_key,
+                query: (*query).to_string(),
+            });
+        }
+    }
+    cases
+}
+
+fn lexical_heavy_queries() -> Vec<RetrievalQueryCase> {
+    let mut cases = Vec::new();
+    for fixture in retrieval_fixtures() {
+        cases.push(RetrievalQueryCase {
+            expected_topic_key: fixture.topic_key,
+            query: title_query(fixture.title),
+        });
+        cases.push(RetrievalQueryCase {
+            expected_topic_key: fixture.topic_key,
+            query: topic_key_query(fixture.topic_key),
+        });
+        cases.push(RetrievalQueryCase {
+            expected_topic_key: fixture.topic_key,
+            query: fixture.exact_queries[0].to_string(),
+        });
+    }
+    cases
+}
+
+fn run_retrieval_benchmark(
+    config: &pensieve::types::PensieveConfig,
+    queries: &[RetrievalQueryCase],
+) -> RetrievalMetrics {
+    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
+    let mut top1 = 0.0;
+    let mut top3 = 0.0;
+    let mut top5 = 0.0;
+    let mut reciprocal_rank_sum = 0.0;
+    let mut total = 0.0;
+
+    for case in queries {
+        let input = pensieve::ops::recall::RecallInput {
+            query: Some(case.query.clone()),
+            memory_type: None,
+            project: None,
+            tags: None,
+            status: None,
+            since: None,
+            limit: 5,
+        };
+        let results = pensieve::ops::recall::recall(config, &idx, &input).unwrap();
+        let rank = results
+            .iter()
+            .position(|memory| memory.topic_key == case.expected_topic_key)
+            .map(|i| i + 1);
+
+        if rank == Some(1) {
+            top1 += 1.0;
+        }
+        if rank.is_some_and(|r| r <= 3) {
+            top3 += 1.0;
+        }
+        if rank.is_some_and(|r| r <= 5) {
+            top5 += 1.0;
+        }
+        reciprocal_rank_sum += rank.map_or(0.0, |r| 1.0 / f64::from(u32::try_from(r).unwrap()));
+        total += 1.0;
+    }
+
+    RetrievalMetrics {
+        top1: top1 / total,
+        top3: top3 / total,
+        top5: top5 / total,
+        mrr: reciprocal_rank_sum / total,
+    }
+}
+
+#[test]
+#[ignore = "benchmark-style retrieval eval; run manually with --ignored --nocapture"]
+fn benchmark_recall_quality() {
+    let dir = TempDir::new().unwrap();
+    let mut config = test_config(&dir);
+    config.retrieval.keyword_weight = 0.7;
+    config.retrieval.vector_weight = 0.3;
+
+    build_retrieval_corpus(&config);
+    let semantic_queries = semantic_stress_queries();
+    let lexical_queries = lexical_heavy_queries();
+
+    let semantic_metrics = run_retrieval_benchmark(&config, &semantic_queries);
+    let lexical_metrics = run_retrieval_benchmark(&config, &lexical_queries);
+
+    let mut vector_heavy = config.clone();
+    vector_heavy.retrieval.keyword_weight = 0.2;
+    vector_heavy.retrieval.vector_weight = 0.8;
+    let lexical_vector_heavy = run_retrieval_benchmark(&vector_heavy, &lexical_queries);
+
+    println!(
+        "semantic stress (0.7/0.3): top1={:.3}, top3={:.3}, top5={:.3}, mrr={:.3}",
+        semantic_metrics.top1, semantic_metrics.top3, semantic_metrics.top5, semantic_metrics.mrr
+    );
+    println!(
+        "lexical heavy (0.7/0.3): top1={:.3}, top3={:.3}, top5={:.3}, mrr={:.3}",
+        lexical_metrics.top1, lexical_metrics.top3, lexical_metrics.top5, lexical_metrics.mrr
+    );
+    println!(
+        "lexical heavy (0.2/0.8): top1={:.3}, top3={:.3}, top5={:.3}, mrr={:.3}",
+        lexical_vector_heavy.top1,
+        lexical_vector_heavy.top3,
+        lexical_vector_heavy.top5,
+        lexical_vector_heavy.mrr
+    );
+
+    assert!(semantic_metrics.top1 >= 0.75, "semantic top1 regression: {}", semantic_metrics.top1);
+    assert!(semantic_metrics.top5 >= 0.95, "semantic top5 regression: {}", semantic_metrics.top5);
+    assert!(semantic_metrics.mrr >= 0.83, "semantic mrr regression: {}", semantic_metrics.mrr);
+
+    assert!(lexical_metrics.top1 >= 0.95, "lexical top1 regression: {}", lexical_metrics.top1);
+    assert!(lexical_metrics.top5 >= 0.99, "lexical top5 regression: {}", lexical_metrics.top5);
+    assert!(lexical_metrics.mrr >= 0.97, "lexical mrr regression: {}", lexical_metrics.mrr);
+    assert!(
+        lexical_metrics.top1 >= lexical_vector_heavy.top1,
+        "lexical benchmark should not favor vector-heavy weights"
+    );
 }
 
 #[test]
@@ -537,7 +995,7 @@ fn test_staleness_flag() {
     let mut new_contents = String::new();
     for line in contents.lines() {
         if line.starts_with("updated:") {
-            new_contents.push_str(&format!("updated: {old_date}"));
+            let _ = write!(new_contents, "updated: {old_date}");
         } else {
             new_contents.push_str(line);
         }
@@ -694,18 +1152,7 @@ fn test_inject_query_flag() {
     let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
 
     // Index it
-    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
-    let memory_id = format!("global/{}", memory.topic_key);
-    let embed_text = format!("{}: {}", memory.title, memory.content);
-    let embedding = pensieve::embedder::try_embed(&embed_text);
-    let _ = idx.upsert(
-        &memory_id,
-        &memory.title,
-        &memory.content,
-        None,
-        &memory.tags,
-        embedding.as_deref(),
-    );
+    index_memory(&config, &memory);
 
     // Run inject with --query flag
     let result =
@@ -757,18 +1204,7 @@ fn test_inject_json_format() {
         dry_run: false,
     };
     let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
-    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
-    let memory_id = format!("global/{}", memory.topic_key);
-    let embed_text = format!("{}: {}", memory.title, memory.content);
-    let embedding = pensieve::embedder::try_embed(&embed_text);
-    let _ = idx.upsert(
-        &memory_id,
-        &memory.title,
-        &memory.content,
-        None,
-        &memory.tags,
-        embedding.as_deref(),
-    );
+    index_memory(&config, &memory);
 
     let result = pensieve::ops::inject::run_inject(
         &config,
@@ -834,18 +1270,7 @@ fn test_inject_stdin_json() {
         dry_run: false,
     };
     let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
-    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
-    let memory_id = format!("global/{}", memory.topic_key);
-    let embed_text = format!("{}: {}", memory.title, memory.content);
-    let embedding = pensieve::embedder::try_embed(&embed_text);
-    let _ = idx.upsert(
-        &memory_id,
-        &memory.title,
-        &memory.content,
-        None,
-        &memory.tags,
-        embedding.as_deref(),
-    );
+    index_memory(&config, &memory);
 
     // Test via binary with stdin JSON (simulating Claude Code hook)
     let bin = env!("CARGO_BIN_EXE_pensieve");
@@ -914,18 +1339,7 @@ fn test_inject_threshold() {
         dry_run: false,
     };
     let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
-    let idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
-    let memory_id = format!("global/{}", memory.topic_key);
-    let embed_text = format!("{}: {}", memory.title, memory.content);
-    let embedding = pensieve::embedder::try_embed(&embed_text);
-    let _ = idx.upsert(
-        &memory_id,
-        &memory.title,
-        &memory.content,
-        None,
-        &memory.tags,
-        embedding.as_deref(),
-    );
+    index_memory(&config, &memory);
 
     // High threshold should filter everything out
     let result =

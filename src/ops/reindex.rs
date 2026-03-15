@@ -16,7 +16,13 @@ pub fn reindex(config: &PensieveConfig, index: &Index) -> Result<usize> {
             None => format!("global/{}", memory.topic_key),
         };
 
-        let embed_text = format!("{}: {}", memory.title, memory.content);
+        let embed_text = embedder::build_embedding_text(
+            &memory.title,
+            &memory.content,
+            &memory.memory_type,
+            memory.project.as_deref(),
+            &memory.tags,
+        );
         let embedding = embedder::try_embed(&embed_text);
 
         index.upsert(

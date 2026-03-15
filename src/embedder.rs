@@ -1,4 +1,5 @@
 use crate::error::{PensieveError, Result};
+use crate::types::MemoryType;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::sync::{Mutex, OnceLock};
 
@@ -32,4 +33,25 @@ pub fn embed(text: &str) -> Result<Vec<f32>> {
 
 pub fn try_embed(text: &str) -> Option<Vec<f32>> {
     embed(text).ok()
+}
+
+pub fn build_embedding_text(
+    title: &str,
+    content: &str,
+    memory_type: &MemoryType,
+    project: Option<&str>,
+    tags: &[String],
+) -> String {
+    let mut sections = vec![format!("Title: {title}"), format!("Type: {memory_type}")];
+
+    if let Some(project) = project {
+        sections.push(format!("Project: {project}"));
+    }
+
+    if !tags.is_empty() {
+        sections.push(format!("Tags: {}", tags.join(", ")));
+    }
+
+    sections.push(format!("Content: {content}"));
+    sections.join("\n")
 }
