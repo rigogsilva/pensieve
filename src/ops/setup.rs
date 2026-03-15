@@ -44,7 +44,7 @@ Register the MCP server:
 claude mcp add --transport stdio --scope user pensieve -- {bin} serve
 ```
 
-Then add the Memory Protocol to `CLAUDE.md` (see Step 2).
+Then add the Memory Protocol (see Step 2).
 
 ### If you are Claude Desktop
 
@@ -65,11 +65,15 @@ Write the file back. Tell the user to restart Claude Desktop to activate.
 
 ### If you are Codex CLI or another agent
 
-Add the Memory Protocol to `AGENTS.md` (see Step 2). You can use Pensieve via CLI commands.
+Add the Memory Protocol (see Step 2). You can use Pensieve via CLI commands.
 
 ## Step 2: Add Memory Protocol
 
-Find your instruction file (`CLAUDE.md` for Claude Code, `AGENTS.md` for Codex/others).
+IMPORTANT: This is a GLOBAL setup, not per-project. Add the Memory Protocol to the user-level instruction file:
+- **Claude Code**: `~/.claude/CLAUDE.md` (global, NOT the project's CLAUDE.md)
+- **Codex CLI**: `~/.codex/AGENTS.md` (global)
+- **Other agents**: The global instruction file for that agent
+
 Check for `<!-- pensieve:start -->` markers.
 
 If the markers don't exist, append the following block (or create the file if it doesn't exist):
