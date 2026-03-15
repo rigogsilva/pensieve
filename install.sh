@@ -29,6 +29,11 @@ mkdir -p "$INSTALL_DIR"
 curl -fsSL "$URL" -o "$INSTALL_DIR/pensieve"
 chmod +x "$INSTALL_DIR/pensieve"
 
+# Re-sign on macOS (downloaded binaries lose their ad-hoc signature on Apple Silicon)
+if [ "$OS" = "Darwin" ] && command -v codesign >/dev/null 2>&1; then
+  codesign --force --sign - "$INSTALL_DIR/pensieve" 2>/dev/null || true
+fi
+
 echo "Installed to $INSTALL_DIR/pensieve"
 echo ""
 
