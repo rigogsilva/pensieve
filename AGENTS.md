@@ -36,7 +36,7 @@ A shared memory system for AI agents. One brain, every AI.
 - Dual surface: CLI (`src/cli.rs`) + MCP server (`src/mcp.rs`)
 - Library crate (`src/lib.rs`) exposes all modules
 - Core operations: `src/ops/` (save, read, delete, list, archive, recall,
-  reindex, configure, context, end_session, schema, update)
+  inject, reindex, configure, context, end_session, schema, setup, update)
 - Storage layer: `src/storage.rs` — markdown read/write with atomic temp+rename
 - Index: `src/index.rs` — SQLite with FTS5 (BM25) + vec0 (vector similarity)
 - Embedder: `src/embedder.rs` — fastembed singleton via OnceLock+Mutex
@@ -54,7 +54,8 @@ A shared memory system for AI agents. One brain, every AI.
 - `list` — list memories with filters
 - `delete` — delete a memory
 - `archive` — archive or supersede a memory
-- `configure` — view/update config
+- `inject` — auto-inject relevant memories (for hook integration)
+- `configure` — view/update config (includes `--inject-enabled`)
 - `get-context` — session start bootstrap
 - `end-session` — save session summary
 - `reindex` — rebuild search index
@@ -62,6 +63,16 @@ A shared memory system for AI agents. One brain, every AI.
 - `serve` — start MCP server (stdio)
 - `version` — print version
 - `update` — self-update from GitHub releases
+- `setup` — install setup skill for detected agents
+
+## Configuration
+
+Config at `~/.config/pensieve/config.toml`:
+
+- `memory_dir` — storage location (default: `~/.pensieve/memory/`)
+- `[retrieval]` — `keyword_weight` (0.7), `vector_weight` (0.3)
+- `[inject]` — `enabled` (false), `relevance_threshold` (0.3), `max_results`
+  (3), `format` ("compact")
 
 ## Memory Protocol
 

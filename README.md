@@ -352,6 +352,21 @@ pensieve schema save    # show save command parameters
 pensieve schema         # show all commands
 ```
 
+### inject
+
+Auto-inject relevant memories (designed for hook integration):
+
+```bash
+# Via stdin (hook mode — reads prompt from JSON)
+echo '{"prompt":"patronus"}' | pensieve inject
+
+# Via flag (manual/testing mode)
+pensieve inject --query "patronus"
+```
+
+Returns compact output above the relevance threshold. If no relevant memories
+are found or inject is disabled, outputs nothing. Never blocks the agent.
+
 ### configure
 
 View or update persistent configuration:
@@ -361,6 +376,8 @@ pensieve configure                          # show current config
 pensieve configure --memory-dir ~/path      # set memory directory
 pensieve configure --keyword-weight 0.8     # tune retrieval
 pensieve configure --vector-weight 0.2
+pensieve configure --inject-enabled true    # enable auto-inject
+pensieve configure --inject-enabled false   # disable auto-inject
 ```
 
 ### Global flags
@@ -443,6 +460,45 @@ Once set up, this happens automatically every session:
 The agent never starts from zero again. Even after context compaction, a
 `pensieve context` call recovers prior knowledge.
 
+## Auto-inject
+
+Agents don't know what they don't know. Without auto-inject, they miss relevant
+memories because they never search. Every major agent memory system —
+[OpenClaw](https://docs.openclaw.ai/concepts/memory),
+[Mem0](https://docs.mem0.ai/),
+[CrewAI](https://docs.crewai.com/concepts/memory),
+[LangGraph](https://langchain-ai.github.io/langgraph/concepts/memory/) — has
+converged on the same pattern: **automatically inject relevant memories before
+each prompt**.
+
+When enabled, `pensieve inject` runs before every prompt via your agent's hook
+system. It reads the prompt from stdin, searches for relevant memories, and
+injects them into context — like the Pensieve basin surfacing the right thought
+at the right moment.
+
+**It's opt-in.** Disabled by default. Enable during `pensieve setup` or with:
+
+```bash
+pensieve configure --inject-enabled true
+```
+
+### Platform support
+
+| Agent       | Auto-inject          | Session recovery | Mechanism               |
+| ----------- | -------------------- | ---------------- | ----------------------- |
+| Claude Code | Yes                  | Yes              | `UserPromptSubmit` hook |
+| Cursor      | Yes                  | —                | `beforeSubmitPrompt`    |
+| Gemini CLI  | Yes                  | Yes              | `BeforeAgent` hook      |
+| Codex CLI   | Not yet              | Yes              | `SessionStart` only     |
+
+### How to disable
+
+```bash
+pensieve configure --inject-enabled false
+```
+
+The hooks remain in place but become no-ops — no need to remove them.
+
 ### Manual agent setup
 
 If `pensieve setup` doesn't detect your agent, you can configure it manually.
@@ -459,7 +515,7 @@ pensieve recall "keyword"
 
 ## MCP tools
 
-When running as an MCP server (`pensieve serve`), exposes 9 tools:
+When running as an MCP server (`pensieve serve`), exposes 10 tools:
 
 | Tool             | Description                               |
 | ---------------- | ----------------------------------------- |
@@ -469,6 +525,7 @@ When running as an MCP server (`pensieve serve`), exposes 9 tools:
 | `delete_memory`  | Delete a memory                           |
 | `list_memories`  | List with filters (type, project, status) |
 | `archive_memory` | Archive or supersede a memory             |
+| `inject`         | Auto-inject relevant memories for hooks   |
 | `configure`      | View or update config                     |
 | `get_context`    | Session start — load prior knowledge      |
 | `end_session`    | Session end — save summary                |
