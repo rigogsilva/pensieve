@@ -20,9 +20,6 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-24.04
             name: pensieve-x86_64-unknown-linux-gnu
-          - target: x86_64-apple-darwin
-            os: macos-13
-            name: pensieve-x86_64-apple-darwin
           - target: aarch64-apple-darwin
             os: macos-latest
             name: pensieve-aarch64-apple-darwin
