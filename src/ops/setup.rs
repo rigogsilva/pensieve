@@ -97,7 +97,7 @@ Both have identical capabilities. MCP tools are preferred when available.
 - **Start**: Call `get_context(project, source)` or run `{bin} context --project <project> --source <agent>`
 - **During work**: Save discoveries with `save_memory` or `{bin} save`
 - **Search**: Recall prior knowledge with `recall` or `{bin} recall "query"`
-- **End**: Call `end_session(summary, project, source)` or run `{bin} end-session --summary "..."`
+- **End**: Call `end_session(summary, project, source)` or run `{bin} end-session --summary "..."` with a 2-3 sentence summary of what was accomplished. Call it when: the user says goodbye/done/thanks, a task is fully complete, or the conversation reaches a natural stopping point. Don't wait to be asked.
 
 ### When to save
 - Bug fix or surprising behavior → `type: gotcha`
@@ -142,9 +142,12 @@ at session start and after compaction. This is NOT opt-in — always set it up.
 
 ### Auto-inject hook (ask the user first)
 
-Ask the user: "Would you like to enable auto-inject? This automatically recalls
-relevant memories before every prompt. You can disable it anytime with
-`{bin} configure --inject-enabled false`."
+Ask the user: "Would you like to enable auto-inject? Without it, I only use
+Pensieve when you explicitly ask me to recall something — meaning I'll miss
+relevant memories I don't know to look for. With auto-inject enabled, relevant
+memories are automatically surfaced before every prompt, so I always have
+context even when I don't know to search for it. It's opt-in and you can
+disable it anytime with `{bin} configure --inject-enabled false`."
 
 If the user says **yes**:
 1. Run: `{bin} configure --inject-enabled true`
@@ -161,6 +164,11 @@ in existing hook commands to avoid duplicates.
 
 ```json
 {{
+  "permissions": {{
+    "allow": [
+      "Bash({bin}*)"
+    ]
+  }},
   "hooks": {{
     "UserPromptSubmit": [
       {{
