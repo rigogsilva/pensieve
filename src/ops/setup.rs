@@ -8,8 +8,6 @@ struct AgentInfo {
     display_name: &'static str,
     config_dir: PathBuf,
     skills_dir: PathBuf,
-    skill_dir_name: &'static str,
-    skill_content: String,
 }
 
 fn home_dir() -> Result<PathBuf> {
@@ -23,9 +21,61 @@ fn bin_path() -> String {
         .unwrap_or_else(|| "pensieve".to_string())
 }
 
-fn memory_protocol_block(bin: &str) -> String {
+fn unified_skill_content(bin: &str) -> String {
     format!(
-        r#"<!-- pensieve:start -->
+        r#"---
+name: pensieve-setup
+description: Set up Pensieve cross-agent memory for this environment. Use when the user asks to "set up pensieve" or "configure pensieve".
+---
+
+# Pensieve Setup Skill
+
+When the user asks you to "set up pensieve", follow these steps.
+
+## Step 1: Detect your environment
+
+Determine which agent you are and follow the matching section:
+
+### If you are Claude Code
+
+Register the MCP server:
+
+```bash
+claude mcp add --transport stdio --scope user pensieve -- {bin} serve
+```
+
+Then add the Memory Protocol to `CLAUDE.md` (see Step 2).
+
+### If you are Claude Desktop
+
+Read the Claude Desktop config file:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/claude-desktop/config.json`
+
+Add the following to the `mcpServers` object (merge with existing servers, don't replace them):
+
+```json
+"pensieve": {{
+  "command": "{bin}",
+  "args": ["serve"]
+}}
+```
+
+Write the file back. Tell the user to restart Claude Desktop to activate.
+
+### If you are Codex CLI or another agent
+
+Add the Memory Protocol to `AGENTS.md` (see Step 2). You can use Pensieve via CLI commands.
+
+## Step 2: Add Memory Protocol
+
+Find your instruction file (`CLAUDE.md` for Claude Code, `AGENTS.md` for Codex/others).
+Check for `<!-- pensieve:start -->` markers.
+
+If the markers don't exist, append the following block (or create the file if it doesn't exist):
+
+```
+<!-- pensieve:start -->
 ## Memory Protocol
 
 This project uses [Pensieve](https://github.com/rigogsilva/pensieve) for cross-agent persistent memory.
@@ -73,38 +123,7 @@ Both have identical capabilities. MCP tools are preferred when available.
 - `--output json` (CLI) for structured processing
 - `project` scopes memories; omit for global knowledge
 - Save important context before context compaction — it won't survive summarization
-<!-- pensieve:end -->"#
-    )
-}
-
-fn claude_skill_content(bin: &str) -> String {
-    let protocol = memory_protocol_block(bin);
-    format!(
-        r#"---
-name: pensieve-setup
-description: Set up Pensieve cross-agent memory for this environment. Use when the user asks to "set up pensieve" or "configure pensieve".
----
-
-# Pensieve Setup Skill
-
-When the user asks you to "set up pensieve", follow these steps:
-
-## Step 1: Register the MCP server
-
-Run this command to register Pensieve as an MCP server:
-
-```bash
-claude mcp add --transport stdio --scope user pensieve -- {bin} serve
-```
-
-## Step 2: Add Memory Protocol to CLAUDE.md
-
-Check if CLAUDE.md exists in the project root. If it does, check for `<!-- pensieve:start -->` markers.
-
-If the markers don't exist, append the following block to CLAUDE.md (or create it if it doesn't exist):
-
-```
-{protocol}
+<!-- pensieve:end -->
 ```
 
 If markers already exist, replace the content between them with the block above.
@@ -124,83 +143,8 @@ Tell the user: "Pensieve is set up! I'll now remember things across sessions."
     )
 }
 
-fn codex_skill_content(bin: &str) -> String {
-    let protocol = memory_protocol_block(bin);
-    format!(
-        r#"---
-name: pensieve-setup
-description: Set up Pensieve cross-agent memory for this environment. Use when the user asks to "set up pensieve" or "configure pensieve".
----
-
-# Pensieve Setup Skill
-
-When the user asks you to "set up pensieve", follow these steps:
-
-## Step 1: Add Memory Protocol to AGENTS.md
-
-Check if AGENTS.md exists in the project root. If it does, check for `<!-- pensieve:start -->` markers.
-
-If the markers don't exist, append the following block to AGENTS.md (or create it if it doesn't exist):
-
-```
-{protocol}
-```
-
-If markers already exist, replace the content between them with the block above.
-
-## Step 2: Verify
-
-Run this command to verify the setup:
-
-```bash
-{bin} context
-```
-
-If it returns a response (even with empty fields), the setup is complete.
-
-Tell the user: "Pensieve is set up! I'll now remember things across sessions."
-"#
-    )
-}
-
-fn claude_desktop_skill_content(bin: &str) -> String {
-    format!(
-        r#"---
-name: pensieve-setup-desktop
-description: Set up Pensieve cross-agent memory for Claude Desktop. Use when the user asks to "set up pensieve" or "configure pensieve" in Claude Desktop.
----
-
-# Pensieve Setup for Claude Desktop
-
-When the user asks you to "set up pensieve", follow these steps:
-
-## Step 1: Add Pensieve to MCP config
-
-Read the Claude Desktop config file at:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Linux: `~/.config/claude-desktop/config.json`
-
-Add the following to the `mcpServers` object (merge with existing servers, don't replace them):
-
-```json
-"pensieve": {{
-  "command": "{bin}",
-  "args": ["serve"]
-}}
-```
-
-Write the file back.
-
-## Step 2: Tell the user
-
-Tell the user: "Pensieve has been added to Claude Desktop. Please restart Claude Desktop to activate. After restart, I'll have access to pensieve memory tools."
-"#
-    )
-}
-
 fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
     let home = home_dir()?;
-    let bin = bin_path();
     let mut agents = Vec::new();
 
     let should_include = |name: &str| filter.is_none() || filter == Some(name);
@@ -211,8 +155,6 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             display_name: "Claude Code",
             config_dir: home.join(".claude"),
             skills_dir: home.join(".claude").join("skills"),
-            skill_dir_name: "pensieve-setup",
-            skill_content: claude_skill_content(&bin),
         });
     }
 
@@ -222,8 +164,6 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             display_name: "Codex CLI",
             config_dir: home.join(".codex"),
             skills_dir: home.join(".codex").join("skills"),
-            skill_dir_name: "pensieve-setup",
-            skill_content: codex_skill_content(&bin),
         });
     }
 
@@ -237,9 +177,8 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
             name: "claude-desktop",
             display_name: "Claude Desktop",
             config_dir,
+            // Claude Desktop shares ~/.claude/skills/ with Claude Code
             skills_dir: home.join(".claude").join("skills"),
-            skill_dir_name: "pensieve-setup-desktop",
-            skill_content: claude_desktop_skill_content(&bin),
         });
     }
 
@@ -256,27 +195,26 @@ fn ensure_in_path() -> Result<bool> {
     // Check if the binary's directory is already in PATH
     if let Ok(path) = std::env::var("PATH") {
         if path.split(':').any(|p| p == bin_dir) {
-            return Ok(false); // already in PATH
+            return Ok(false);
         }
     }
 
     // Also check if "pensieve" is directly findable
     if std::process::Command::new("pensieve").arg("version").output().is_ok() {
-        return Ok(false); // already findable
+        return Ok(false);
     }
 
     let home = home_dir()?;
     let export_line = format!("export PATH=\"{bin_dir}:$PATH\"");
     let marker = "# pensieve";
 
-    // Try .zshrc first (macOS default), then .bashrc
     let shell_configs = [home.join(".zshrc"), home.join(".bashrc")];
 
     for config in &shell_configs {
         if config.exists() {
             let contents = std::fs::read_to_string(config)?;
             if contents.contains(marker) {
-                return Ok(false); // already added
+                return Ok(false);
             }
             let addition = format!("\n{marker}\n{export_line}\n");
             let mut file = std::fs::OpenOptions::new().append(true).open(config)?;
@@ -297,25 +235,33 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
+    let bin = bin_path();
+    let skill_content = unified_skill_content(&bin);
+
     println!("Setting up Pensieve...\n");
 
-    // Ensure binary is in PATH
     let path_added = ensure_in_path()?;
 
     println!("Found agents:");
 
     let mut any_installed = false;
+    let mut skill_installed = false;
 
     for agent in &agents {
         if agent.config_dir.exists() {
-            let skill_dir = agent.skills_dir.join(agent.skill_dir_name);
-            std::fs::create_dir_all(&skill_dir)?;
-            let skill_path = skill_dir.join("SKILL.md");
-            std::fs::write(&skill_path, &agent.skill_content)?;
+            // Only install the skill once per skills_dir (Claude Code and Desktop share ~/.claude/skills/)
+            if !skill_installed
+                || !agent.skills_dir.join("pensieve-setup").join("SKILL.md").exists()
+            {
+                let skill_dir = agent.skills_dir.join("pensieve-setup");
+                std::fs::create_dir_all(&skill_dir)?;
+                std::fs::write(skill_dir.join("SKILL.md"), &skill_content)?;
+                skill_installed = true;
+            }
             println!(
-                "  \u{2713} {} \u{2014} added skill to {}/",
+                "  \u{2713} {} \u{2014} skill available at {}/pensieve-setup/",
                 agent.display_name,
-                skill_dir.display()
+                agent.skills_dir.display()
             );
             any_installed = true;
         } else {
@@ -325,6 +271,13 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
 
     if agent_filter.is_none() {
         println!("  \u{2717} Cursor \u{2014} not detected");
+    }
+
+    // Clean up old separate desktop skill if it exists
+    let home = home_dir()?;
+    let old_desktop_skill = home.join(".claude/skills/pensieve-setup-desktop");
+    if old_desktop_skill.exists() {
+        let _ = std::fs::remove_dir_all(&old_desktop_skill);
     }
 
     println!();
