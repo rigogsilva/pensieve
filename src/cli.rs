@@ -26,6 +26,10 @@ pub enum OutputFormat {
 pub enum Command {
     /// Save a memory
     Save {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Memory title
         #[arg(long)]
         title: Option<String>,
@@ -72,6 +76,10 @@ pub enum Command {
     },
     /// Read a memory by topic key
     Read {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Topic key
         topic_key: String,
 
@@ -81,6 +89,10 @@ pub enum Command {
     },
     /// Search memories
     Recall {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Search query
         query: Option<String>,
 
@@ -110,6 +122,10 @@ pub enum Command {
     },
     /// List all memories
     List {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Filter by project
         #[arg(long)]
         project: Option<String>,
@@ -124,6 +140,10 @@ pub enum Command {
     },
     /// Delete a memory
     Delete {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Topic key
         topic_key: String,
 
@@ -137,6 +157,10 @@ pub enum Command {
     },
     /// Archive a memory
     Archive {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Topic key
         topic_key: String,
 
@@ -154,6 +178,10 @@ pub enum Command {
     },
     /// Configure pensieve
     Configure {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Set memory directory
         #[arg(long)]
         memory_dir: Option<String>,
@@ -172,6 +200,10 @@ pub enum Command {
     },
     /// Get context for session start
     GetContext {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Project name
         #[arg(long)]
         project: Option<String>,
@@ -182,6 +214,10 @@ pub enum Command {
     },
     /// End session with summary
     EndSession {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Session summary
         #[arg(long)]
         summary: Option<String>,
@@ -215,6 +251,10 @@ pub enum Command {
     },
     /// Get context for session start (alias for get-context)
     Context {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
         /// Project name
         #[arg(long)]
         project: Option<String>,

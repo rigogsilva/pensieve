@@ -87,6 +87,11 @@ pub fn recall(
 
         if let Ok(memory) = storage::read_memory(config, topic_key, project) {
             // Apply filters
+            if let Some(ref proj) = input.project {
+                if memory.project.as_deref() != Some(proj.as_str()) {
+                    continue;
+                }
+            }
             if let Some(ref tf) = input.memory_type {
                 if &memory.memory_type != tf {
                     continue;

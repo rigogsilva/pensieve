@@ -35,6 +35,7 @@ async fn main() {
 
     match cli.command {
         Command::Save {
+            output,
             title,
             content,
             r#type,
@@ -47,6 +48,7 @@ async fn main() {
             dry_run,
             json,
         } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             let (title, content, r#type, topic_key, project, tags, source) = if let Some(j) = json {
                 let v = read_json_input(&j).expect("invalid JSON input");
                 (
@@ -127,7 +129,7 @@ async fn main() {
                             );
                         }
                     }
-                    output_result(&cli.output, &memory);
+                    output_result(format, &memory);
                 }
                 Err(e) => {
                     eprintln!("Error: {e}");
@@ -136,9 +138,10 @@ async fn main() {
             }
         }
 
-        Command::Read { topic_key, project } => {
+        Command::Read { output, topic_key, project } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             match ops::read::read_memory(&cfg, &topic_key, project.as_deref()) {
-                Ok(memory) => output_result(&cli.output, &memory),
+                Ok(memory) => output_result(format, &memory),
                 Err(e) => {
                     eprintln!("Error: {e}");
                     std::process::exit(1);
@@ -146,7 +149,8 @@ async fn main() {
             }
         }
 
-        Command::Recall { query, r#type, project, tags, status, since, limit } => {
+        Command::Recall { output, query, r#type, project, tags, status, since, limit } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             let memory_type = r#type.map(|t| t.parse().expect("invalid memory type"));
             let status = status.map(|s| s.parse().expect("invalid status"));
             let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
@@ -170,7 +174,7 @@ async fn main() {
 
             match index::Index::open(&cfg.memory_dir) {
                 Ok(idx) => match ops::recall::recall(&cfg, &idx, &input) {
-                    Ok(results) => output_result(&cli.output, &results),
+                    Ok(results) => output_result(format, &results),
                     Err(e) => {
                         eprintln!("Error: {e}");
                         std::process::exit(1);
@@ -183,7 +187,8 @@ async fn main() {
             }
         }
 
-        Command::List { project, r#type, status } => {
+        Command::List { output, project, r#type, status } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             let memory_type = r#type.map(|t| t.parse().expect("invalid memory type"));
             let status = status.map(|s| s.parse().expect("invalid status"));
 
@@ -193,7 +198,7 @@ async fn main() {
                 memory_type.as_ref(),
                 status.as_ref(),
             ) {
-                Ok(memories) => output_result(&cli.output, &memories),
+                Ok(memories) => output_result(format, &memories),
                 Err(e) => {
                     eprintln!("Error: {e}");
                     std::process::exit(1);
@@ -201,7 +206,8 @@ async fn main() {
             }
         }
 
-        Command::Delete { topic_key, project, dry_run } => {
+        Command::Delete { output, topic_key, project, dry_run } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             match ops::delete::delete_memory(&cfg, &topic_key, project.as_deref(), dry_run) {
                 Ok(memory) => {
                     if !dry_run {
@@ -214,7 +220,7 @@ async fn main() {
                             let _ = idx.delete(&memory_id);
                         }
                     }
-                    output_result(&cli.output, &memory);
+                    output_result(format, &memory);
                 }
                 Err(e) => {
                     eprintln!("Error: {e}");
@@ -223,7 +229,8 @@ async fn main() {
             }
         }
 
-        Command::Archive { topic_key, project, superseded_by, dry_run } => {
+        Command::Archive { output, topic_key, project, superseded_by, dry_run } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             match ops::archive::archive_memory(
                 &cfg,
                 &topic_key,
@@ -231,7 +238,7 @@ async fn main() {
                 superseded_by.as_deref(),
                 dry_run,
             ) {
-                Ok(memory) => output_result(&cli.output, &memory),
+                Ok(memory) => output_result(format, &memory),
                 Err(e) => {
                     eprintln!("Error: {e}");
                     std::process::exit(1);
@@ -239,9 +246,10 @@ async fn main() {
             }
         }
 
-        Command::Configure { memory_dir, keyword_weight, vector_weight, dry_run } => {
+        Command::Configure { output, memory_dir, keyword_weight, vector_weight, dry_run } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             if memory_dir.is_none() && keyword_weight.is_none() && vector_weight.is_none() {
-                output_result(&cli.output, &cfg);
+                output_result(format, &cfg);
             } else {
                 match ops::configure::configure(
                     &cfg,
@@ -250,7 +258,7 @@ async fn main() {
                     vector_weight,
                     dry_run,
                 ) {
-                    Ok(new_cfg) => output_result(&cli.output, &new_cfg),
+                    Ok(new_cfg) => output_result(format, &new_cfg),
                     Err(e) => {
                         eprintln!("Error: {e}");
                         std::process::exit(1);
@@ -259,9 +267,11 @@ async fn main() {
             }
         }
 
-        Command::GetContext { project, source } | Command::Context { project, source } => {
+        Command::GetContext { output, project, source }
+        | Command::Context { output, project, source } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             match ops::context::get_context(&cfg, project.as_deref(), source.as_deref()) {
-                Ok(context) => output_result(&cli.output, &context),
+                Ok(context) => output_result(format, &context),
                 Err(e) => {
                     eprintln!("Error: {e}");
                     std::process::exit(1);
@@ -277,7 +287,8 @@ async fn main() {
             }
         },
 
-        Command::EndSession { summary, key_decisions, source, project, json, dry_run } => {
+        Command::EndSession { output, summary, key_decisions, source, project, json, dry_run } => {
+            let format = output.as_ref().unwrap_or(&cli.output);
             let (summary, key_decisions, source, project) = if let Some(j) = json {
                 let v = read_json_input(&j).expect("invalid JSON input");
                 (
@@ -315,7 +326,7 @@ async fn main() {
                 project.as_deref(),
                 dry_run,
             ) {
-                Ok(session) => output_result(&cli.output, &session),
+                Ok(session) => output_result(format, &session),
                 Err(e) => {
                     eprintln!("Error: {e}");
                     std::process::exit(1);
