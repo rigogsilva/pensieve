@@ -3,6 +3,7 @@ pub mod configure;
 pub mod context;
 pub mod delete;
 pub mod end_session;
+pub mod inject;
 pub mod list;
 pub mod read;
 pub mod recall;

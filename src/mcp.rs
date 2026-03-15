@@ -122,6 +122,18 @@ pub struct ConfigureParams {
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct InjectParams {
+    /// Search query
+    pub query: Option<String>,
+    /// Filter by project
+    pub project: Option<String>,
+    /// Max results
+    pub limit: Option<usize>,
+    /// Output format: compact or json
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct GetContextParams {
     /// Project name
     pub project: Option<String>,
@@ -323,6 +335,23 @@ impl PensieveServer {
         }
     }
 
+    #[tool(
+        description = "Auto-inject relevant memories for a prompt. Returns compact results above relevance threshold. Designed for hook integration."
+    )]
+    async fn inject(&self, params: Parameters<InjectParams>) -> String {
+        let params = params.0;
+        match ops::inject::run_inject(
+            &self.config,
+            params.query,
+            params.project,
+            params.limit,
+            params.format.as_deref(),
+        ) {
+            Ok(result) => result,
+            Err(e) => format!("Error: {e}"),
+        }
+    }
+
     #[tool(description = "View or update configuration. Without args, returns current config.")]
     async fn configure(&self, params: Parameters<ConfigureParams>) -> String {
         let params = params.0;
@@ -337,6 +366,7 @@ impl PensieveServer {
                 params.memory_dir.as_deref(),
                 params.keyword_weight,
                 params.vector_weight,
+                None,
                 false,
             ) {
                 Ok(new_config) => json_result(&new_config),

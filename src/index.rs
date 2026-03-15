@@ -3,6 +3,31 @@ use rusqlite::params;
 use std::path::Path;
 use std::sync::Mutex;
 
+// Short words that add noise to FTS5 keyword searches
+const STOPWORDS: &[&str] = &[
+    "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "do", "for", "from", "had",
+    "has", "have", "he", "her", "his", "how", "i", "if", "in", "is", "it", "its", "me", "my", "no",
+    "not", "of", "on", "or", "our", "out", "she", "so", "than", "that", "the", "their", "them",
+    "then", "there", "they", "this", "to", "up", "us", "was", "we", "what", "when", "where",
+    "which", "who", "will", "with", "you", "your",
+];
+
+/// Build an FTS5 query from a natural language string.
+/// Single words are passed through. Multi-word queries use OR semantics
+/// with stopwords removed so any meaningful term can match.
+fn build_fts_query(query: &str) -> String {
+    let terms: Vec<String> = query
+        .split_whitespace()
+        .map(|t| t.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase())
+        .filter(|t| !t.is_empty() && t.len() > 1 && !STOPWORDS.contains(&t.as_str()))
+        .collect();
+
+    if terms.is_empty() {
+        return query.trim().to_string();
+    }
+    terms.join(" OR ")
+}
+
 pub struct Index {
     conn: Mutex<rusqlite::Connection>,
 }
@@ -88,13 +113,18 @@ impl Index {
         let conn =
             self.conn.lock().map_err(|e| PensieveError::Config(format!("lock poisoned: {e}")))?;
 
+        let fts_query = build_fts_query(query);
+        if fts_query.is_empty() {
+            return Ok(vec![]);
+        }
+
         let limit_i64 = i64::try_from(limit).unwrap_or(i64::MAX);
         let mut stmt = conn.prepare(
             "SELECT memory_id, bm25(memory_fts) AS score FROM memory_fts WHERE memory_fts MATCH ?1 ORDER BY score LIMIT ?2",
         )?;
 
         let results = stmt
-            .query_map(params![query, limit_i64], |row| {
+            .query_map(params![fts_query, limit_i64], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
             })?
             .filter_map(std::result::Result::ok)
