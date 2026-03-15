@@ -29,8 +29,38 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 
 ## Install
 
+### Download (recommended)
+
+Download the latest binary for your platform from
+[GitHub Releases](https://github.com/rigogsilva/pensieve/releases/latest):
+
+```bash
+# macOS (Apple Silicon)
+curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-aarch64-apple-darwin -o pensieve
+chmod +x pensieve
+sudo mv pensieve /usr/local/bin/
+
+# macOS (Intel)
+curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-apple-darwin -o pensieve
+chmod +x pensieve
+sudo mv pensieve /usr/local/bin/
+
+# Linux (x86_64)
+curl -L https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-unknown-linux-gnu -o pensieve
+chmod +x pensieve
+sudo mv pensieve /usr/local/bin/
+```
+
+### From source (requires Rust)
+
 ```bash
 cargo install --git https://github.com/rigogsilva/pensieve
+```
+
+### Update
+
+```bash
+pensieve update
 ```
 
 ## Quick start
