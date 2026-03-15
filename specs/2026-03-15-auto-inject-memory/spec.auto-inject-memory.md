@@ -338,8 +338,9 @@ Add an "Auto-inject" section to the README explaining:
   stdin. `pensieve inject` tries JSON parse first, falls back to raw text.
 - **Cursor and Gemini stdin format**: Not yet verified. Implement Claude Code
   first, then verify and add adapter logic if needed.
-- **JSON merging**: The skill instructs the agent to read existing settings.json,
-  parse JSON, and merge hooks without replacing existing hooks from other tools.
+- **JSON merging**: The skill instructs the agent to read existing
+  settings.json, parse JSON, and merge hooks without replacing existing hooks
+  from other tools.
 - **`inject` reuses recall**: The inject command calls `ops::recall::recall()`
   with a threshold filter and compact output formatter — ~80 lines of new code.
 - **SessionStart is separate from inject**: The SessionStart hook runs
@@ -352,9 +353,9 @@ Add an "Auto-inject" section to the README explaining:
   - `inject` command exits silently on all errors (returns `Ok(String::new())`)
     to never block the agent. The binary catches errors too and does not write
     to stderr.
-  - `configure --inject-enabled` flag added alongside existing `--keyword-weight`
-    / `--vector-weight` flags. MCP configure tool passes `None` for inject since
-    it's a CLI/skill concern.
+  - `configure --inject-enabled` flag added alongside existing
+    `--keyword-weight` / `--vector-weight` flags. MCP configure tool passes
+    `None` for inject since it's a CLI/skill concern.
   - Setup skill updated with all 4 agent hook formats (Claude Code, Cursor,
     Gemini CLI, Codex CLI). Pre-prompt hooks are opt-in (skill asks user).
     SessionStart hooks are always wired.

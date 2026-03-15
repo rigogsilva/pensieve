@@ -484,12 +484,12 @@ pensieve configure --inject-enabled true
 
 ### Platform support
 
-| Agent       | Auto-inject          | Session recovery | Mechanism               |
-| ----------- | -------------------- | ---------------- | ----------------------- |
-| Claude Code | Yes                  | Yes              | `UserPromptSubmit` hook |
-| Cursor      | Yes                  | —                | `beforeSubmitPrompt`    |
-| Gemini CLI  | Yes                  | Yes              | `BeforeAgent` hook      |
-| Codex CLI   | Not yet              | Yes              | `SessionStart` only     |
+| Agent       | Auto-inject | Session recovery | Mechanism               |
+| ----------- | ----------- | ---------------- | ----------------------- |
+| Claude Code | Yes         | Yes              | `UserPromptSubmit` hook |
+| Cursor      | Yes         | —                | `beforeSubmitPrompt`    |
+| Gemini CLI  | Yes         | Yes              | `BeforeAgent` hook      |
+| Codex CLI   | Not yet     | Yes              | `SessionStart` only     |
 
 ### How to disable
 
