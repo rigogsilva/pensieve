@@ -1,11 +1,16 @@
 # Pensieve
 
+_"I use the Pensieve. One simply siphons the excess thoughts from one's mind,
+pours them into the basin, and examines them at one's leisure."_ — Albus
+Dumbledore
+
 A shared memory system for AI agents. One brain, every AI.
 
 Every AI agent starts from zero. Claude Code has memory files locked in
-`~/.claude/` — invisible to Codex, Cursor, Copilot, Gemini CLI. Pensieve fixes
-this: one memory store that any agent can read and write, via CLI, MCP, or plain
-file access.
+`~/.claude/` — invisible to Codex, Cursor, Copilot, Gemini CLI. Like
+Dumbledore's stone basin, Pensieve lets you extract thoughts and examine them
+later — one memory store that any agent can read and write, via CLI, MCP, or
+plain file access.
 
 ## How it works
 
@@ -19,12 +24,12 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 │   ├── coding-style.md
 │   └── notebook-cell-format.md
 ├── projects/
-│   ├── jarvis/
-│   │   └── horizon-cli-scope.md
-│   └── wearhouse/
-│       └── ralph-ci-gate.md
+│   ├── hogwarts/
+│   │   └── patronus-charm-tips.md
+│   └── ministry/
+│       └── floo-network-config.md
 ├── sessions/                  # Session summaries
-│   └── 2026-03-15T143022-jarvis-claude-code.md
+│   └── 2026-03-15T143022-hogwarts-claude-code.md
 ├── index.sqlite               # Search index (rebuildable)
 └── CONTEXT.md                 # Auto-generated context snapshot
 ```
@@ -71,22 +76,22 @@ replaces the binary in place.
 ## Quick start
 
 ```bash
-# Save a memory
+# Store a thought in the Pensieve
 pensieve save \
-  --title "Horizon CLI scope flag" \
-  --content "The --scope flag must go AFTER the subcommand" \
-  --type gotcha \
-  --topic-key horizon-cli-scope \
-  --project jarvis
+  --title "Patronus charm requires happy memory" \
+  --content "The wand movement is a circular motion. Focus on your happiest memory." \
+  --type how-it-works \
+  --topic-key patronus-charm \
+  --project hogwarts
 
-# Search memories
-pensieve recall "scope flag"
+# Recall a thought
+pensieve recall "patronus"
 
 # List all memories
 pensieve list
 
 # Read a specific memory
-pensieve read horizon-cli-scope --project jarvis
+pensieve read patronus-charm --project hogwarts
 
 # Start an MCP server (for AI agents)
 pensieve serve
@@ -102,26 +107,27 @@ pensieve serve
 
 ## Memory file format
 
-Each memory is a markdown file with YAML frontmatter:
+Each memory is a markdown file with YAML frontmatter — like a silvery thread of
+thought in the stone basin:
 
 ```markdown
 ---
-title: Horizon CLI scope flag placement
-type: gotcha
-topic_key: horizon-cli-scope
-project: jarvis
+title: Patronus charm requires happy memory
+type: how-it-works
+topic_key: patronus-charm
+project: hogwarts
 status: active
 revision: 2
 tags:
-  - horizon
-  - cli
+  - charms
+  - defense
 source: claude-code
 created: 2026-02-18T11:23:00Z
 updated: 2026-03-14T10:00:00Z
 ---
 
-The `--scope` flag must go AFTER the subcommand, not before.
-`horizon --scope X schemas list` fails — use `horizon schemas list --scope X`.
+The wand movement is a circular motion. Focus on your happiest memory. The
+stronger the memory, the more powerful the Patronus.
 ```
 
 ### Memory types
@@ -140,10 +146,10 @@ Memories start as **active** and can be transitioned:
 
 ```bash
 # Archive a memory (no longer relevant)
-pensieve archive old-memory
+pensieve archive old-spell
 
 # Supersede a memory (replaced by a newer one)
-pensieve archive old-memory --superseded-by new-memory
+pensieve archive old-spell --superseded-by improved-spell
 
 # Archived/superseded memories are excluded from get-context
 # but still searchable with --status archived
@@ -154,14 +160,14 @@ pensieve list --status archived
 
 Topic keys are the filename stem and unique identifier. Rules:
 
-- Lowercase alphanumeric with hyphens only: `horizon-cli-scope`
+- Lowercase alphanumeric with hyphens only: `patronus-charm`
 - No spaces, uppercase, or special characters
 - Reuse an existing topic key to **update** the memory (revision increments)
 
 ### Projects vs global
 
-- `--project jarvis` → stored in `projects/jarvis/horizon-cli-scope.md`
-- No project → stored in `global/horizon-cli-scope.md`
+- `--project hogwarts` → stored in `projects/hogwarts/patronus-charm.md`
+- No project → stored in `global/patronus-charm.md`
 - Global memories apply everywhere; project memories are scoped
 
 ## CLI reference
@@ -173,12 +179,12 @@ increments.
 
 ```bash
 pensieve save \
-  --title "Memory title" \
-  --content "Memory content" \
-  --type gotcha \
-  --topic-key my-memory \
-  --project myproject \
-  --tags "cli,argparse" \
+  --title "Expelliarmus disarming charm" \
+  --content "Point wand at opponent, sharp flick. Works against most spells." \
+  --type how-it-works \
+  --topic-key expelliarmus \
+  --project hogwarts \
+  --tags "charms,defense" \
   --source claude-code
 ```
 
@@ -196,9 +202,9 @@ Options:
 Search memories using hybrid retrieval (BM25 keyword + vector similarity):
 
 ```bash
-pensieve recall "deployment process"
-pensieve recall "ONNX" --project jarvis --type gotcha --limit 5
-pensieve recall --since 2026-03-01 --tags "cli"
+pensieve recall "defensive spells"
+pensieve recall "charm" --project hogwarts --type how-it-works --limit 5
+pensieve recall --since 2026-03-01 --tags "defense"
 ```
 
 ### read
@@ -206,7 +212,7 @@ pensieve recall --since 2026-03-01 --tags "cli"
 Read the full content of a specific memory:
 
 ```bash
-pensieve read horizon-cli-scope --project jarvis
+pensieve read patronus-charm --project hogwarts
 ```
 
 ### list
@@ -215,21 +221,21 @@ List all memories (no content, just metadata):
 
 ```bash
 pensieve list
-pensieve list --project jarvis --type gotcha --status active
+pensieve list --project hogwarts --type gotcha --status active
 ```
 
 ### delete
 
 ```bash
-pensieve delete old-memory --project jarvis
-pensieve delete old-memory --dry-run  # preview
+pensieve delete old-spell --project hogwarts
+pensieve delete old-spell --dry-run  # preview
 ```
 
 ### archive
 
 ```bash
-pensieve archive outdated-memory
-pensieve archive outdated-memory --superseded-by new-memory
+pensieve archive outdated-spell
+pensieve archive outdated-spell --superseded-by improved-spell
 ```
 
 ### get-context
@@ -237,7 +243,7 @@ pensieve archive outdated-memory --superseded-by new-memory
 Session start — call this first to load prior knowledge:
 
 ```bash
-pensieve get-context --project jarvis --source claude-code
+pensieve get-context --project hogwarts --source claude-code
 ```
 
 Returns:
@@ -257,10 +263,10 @@ Session end — save a summary before closing:
 
 ```bash
 pensieve end-session \
-  --summary "Implemented the data pipeline refactor" \
-  --key-decisions "Chose Polars over Pandas for performance" \
+  --summary "Refactored the Room of Requirement navigation module" \
+  --key-decisions "Switched from breadth-first to intent-based pathfinding" \
   --source claude-code \
-  --project jarvis
+  --project hogwarts
 ```
 
 ### reindex
@@ -322,7 +328,8 @@ vector_weight = 0.3
 
 ### Cloud sync
 
-Point the memory directory to a synced folder for cross-machine access:
+Point the memory directory to a synced folder for cross-machine access — like
+having a Pensieve in every office:
 
 ```bash
 # iCloud
@@ -338,12 +345,13 @@ sync.
 
 ## Hybrid retrieval
 
-Pensieve uses two search strategies combined:
+Pensieve uses two search strategies combined, like combining Legilimency with a
+good library index:
 
 - **BM25 (keyword)** — exact term matching via SQLite FTS5. Fast, precise. Finds
-  "ONNX" when you search "ONNX".
+  "Patronus" when you search "Patronus".
 - **Vector (semantic)** — embedding similarity via fastembed + sqlite-vec. Finds
-  "deployment process" when the memory says "how we ship to prod".
+  "defensive spells" when the memory says "how to cast a Patronus charm".
 
 Results are blended with configurable weights (default 70% keyword, 30% vector):
 
