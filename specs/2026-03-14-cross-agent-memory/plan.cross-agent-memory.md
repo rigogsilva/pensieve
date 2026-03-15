@@ -577,20 +577,20 @@ creates a temp directory for isolation.
 
 ## Closing Steps
 
-- [ ] **Check `AGENTS.md`**: Review `AGENTS.md` at the repository root. This
+- [x] **Check `AGENTS.md`**: Review `AGENTS.md` at the repository root. This
       change introduces new CLI commands, architecture details, and development
       patterns. Update AGENTS.md to reflect the current state: crate
       dependencies, module structure (`src/types.rs`, `src/ops/`,
       `src/index.rs`, etc.), all CLI commands, Memory Protocol reference.
 
-- [ ] **Update spec**: Once implementation is complete, update the
+- [x] **Update spec**: Once implementation is complete, update the
       `Implementation Notes` section of spec.cross-agent-memory.md with: (a)
       implementation decisions made and their rationale, (b) new patterns or
       conventions introduced, (c) the testing approach used and any coverage
       notes, (d) anything that would change how a future reader interprets or
       extends this spec.
 
-- [ ] **Worktree teardown**: After all implementation work is verified:
+- [x] **Worktree teardown**: After all implementation work is verified:
   ```bash
   cd /Users/rigo/Documents/Projects/worktrees/cross-agent-memory/implement/pensieve
   git add -A
