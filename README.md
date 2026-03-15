@@ -23,10 +23,13 @@ agents the Memory Protocol — judgment that can't come from `--help` alone.
 
 **Research-driven retrieval.** We studied how Claude Code's built-in memory
 works, analyzed [OpenClaw](https://github.com/claw-project/openclaw)'s two-tier
-memory system (long-term + session), and ran empirical tests comparing keyword
-vs semantic search. The result: a hybrid approach where BM25 keyword search
-(70%) is primary and vector similarity (30%) fills semantic gaps — because in
-practice, an agent with grep beats pure vector search.
+memory system (long-term + session), and ran empirical tests comparing regex
+keyword search vs pure vector/semantic search. The finding: an AI agent with
+regex consistently outperforms pure vector search for memory recall — the agent
+itself is the semantic layer. The result is a hybrid approach where BM25 keyword
+search (70%) is primary and vector similarity (30%) fills the gaps for fuzzy
+queries like "how do we deploy" matching a memory titled "production release
+process".
 
 **Markdown as source of truth.** No proprietary database. Every memory is a
 readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
