@@ -191,6 +191,16 @@ in existing hook commands to avoid duplicates.
           }}
         ]
       }}
+    ],
+    "PostCompact": [
+      {{
+        "hooks": [
+          {{
+            "type": "command",
+            "command": "jq -r '.compact_summary' | {bin} end-session --summary - --source claude-code 2>/dev/null || true"
+          }}
+        ]
+      }}
     ]
   }}
 }}
@@ -198,7 +208,8 @@ in existing hook commands to avoid duplicates.
 
 The `UserPromptSubmit` hook reads the prompt from stdin (JSON) and injects
 relevant memories. Only add this hook if the user opted in to auto-inject.
-The `SessionStart` hook is always added.
+The `SessionStart` and `PostCompact` hooks are always added. `PostCompact`
+auto-saves the compaction summary so long sessions are never lost.
 
 ### Cursor
 

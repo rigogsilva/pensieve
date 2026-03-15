@@ -493,11 +493,13 @@ Once set up, this happens automatically every session:
    that auto-load files.
 2. **During work** — agent saves discoveries: `pensieve save --type gotcha ...`
 3. **Search** — agent recalls prior knowledge: `pensieve recall "query"`
-4. **Session end** — agent calls `pensieve end-session --summary "..."` → next
+4. **Context compaction** — when the conversation is auto-compacted, the
+   `PostCompact` hook fires and saves the compaction summary as a session entry
+   automatically — long sessions are never lost mid-way.
+5. **Session end** — agent calls `pensieve end-session --summary "..."` → next
    session picks up where this one left off
 
-The agent never starts from zero again. Even after context compaction, a
-`pensieve context` call recovers prior knowledge.
+The agent never starts from zero again.
 
 ## Auto-inject
 
@@ -523,12 +525,12 @@ pensieve configure --inject-enabled true
 
 ### Platform support
 
-| Agent       | Auto-inject | Session recovery | Mechanism               |
-| ----------- | ----------- | ---------------- | ----------------------- |
-| Claude Code | Yes         | Yes              | `UserPromptSubmit` hook |
-| Cursor      | Yes         | —                | `beforeSubmitPrompt`    |
-| Gemini CLI  | Yes         | Yes              | `BeforeAgent` hook      |
-| Codex CLI   | Not yet     | Yes              | `SessionStart` only     |
+| Agent       | Auto-inject | Session recovery | Compaction save | Mechanism               |
+| ----------- | ----------- | ---------------- | --------------- | ----------------------- |
+| Claude Code | Yes         | Yes              | Yes             | `UserPromptSubmit` hook |
+| Cursor      | Yes         | —                | —               | `beforeSubmitPrompt`    |
+| Gemini CLI  | Yes         | Yes              | —               | `BeforeAgent` hook      |
+| Codex CLI   | Not yet     | Yes              | —               | `SessionStart` only     |
 
 ### How session recovery works
 
