@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "pensieve": {
+      "command": "pensieve",
+      "args": ["serve"]
+    }
+  }
+}
