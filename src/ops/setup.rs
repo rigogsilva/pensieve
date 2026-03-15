@@ -177,7 +177,7 @@ in existing hook commands to avoid duplicates.
         "hooks": [
           {{
             "type": "command",
-            "command": "{bin} context --output json 2>/dev/null || true"
+            "command": "{bin} context 2>/dev/null || true"
           }}
         ]
       }}
@@ -227,7 +227,7 @@ existing hooks. Check for "pensieve" to avoid duplicates.
     "SessionStart": [
       {{
         "type": "command",
-        "command": "{bin} context --output json 2>/dev/null || true"
+        "command": "{bin} context 2>/dev/null || true"
       }}
     ]
   }}
@@ -247,7 +247,7 @@ yet). Always add it:
     "SessionStart": [
       {{
         "type": "command",
-        "command": "{bin} context --output json 2>/dev/null || true"
+        "command": "{bin} context 2>/dev/null || true"
       }}
     ]
   }}
