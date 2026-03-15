@@ -79,7 +79,18 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 
 ## Getting started
 
-### 1. Install
+### 1. Install and setup
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rigogsilva/pensieve/main/install.sh | sh
+```
+
+This detects your platform, downloads the binary to `~/bin/`, adds it to PATH,
+and runs `pensieve setup` — which detects your AI agents and installs the setup
+skill.
+
+<details>
+<summary>Manual install / from source</summary>
 
 ```bash
 # macOS (Apple Silicon)
@@ -92,11 +103,9 @@ mkdir -p ~/bin && curl -fsSL https://github.com/rigogsilva/pensieve/releases/lat
 cargo install --git https://github.com/rigogsilva/pensieve
 ```
 
-### 2. Connect to your agents
+Then run `pensieve setup` to configure your agents.
 
-```bash
-pensieve setup
-```
+</details>
 
 This detects which AI agents you have installed and adds a setup skill to each
 one:
