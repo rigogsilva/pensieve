@@ -45,12 +45,13 @@ real-world findings from teams building agent tooling:
   decay. Pensieve adopts the same two-tier pattern (sessions + long-term) and
   hybrid retrieval. On the author's real memory corpus, a keyword-heavy blend
   performed better than vector-heavy settings, which matches the intuition that
-  personal memory stores often behave more like named note lookup than open-ended
-  semantic search. Weights are tunable via `pensieve configure`.
+  personal memory stores often behave more like named note lookup than
+  open-ended semantic search. Weights are tunable via `pensieve configure`.
 
 The current result: BM25 keyword search is primary, vector similarity fills the
 gaps for fuzzier queries. The default blend is `70%` keyword / `30%` vector,
-chosen from a read-only sweep over the real memory corpus. Configurable to taste.
+chosen from a read-only sweep over the real memory corpus. Configurable to
+taste.
 
 **Markdown as source of truth.** No proprietary database. Every memory is a
 readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
@@ -441,8 +442,8 @@ good library index:
   "defensive spells" when the memory says "how to cast a Patronus charm".
 
 Results are blended with configurable weights. The current default is `70%`
-keyword / `30%` vector because the real-memory sweep favored a keyword-heavy
-mix on the author's actual corpus:
+keyword / `30%` vector because the real-memory sweep favored a keyword-heavy mix
+on the author's actual corpus:
 
 ```bash
 # Tune weights
@@ -460,13 +461,19 @@ cargo run --bin update_retrieval_benchmark_readme
 ```
 
 <!-- retrieval-benchmark:start -->
-Latest benchmark snapshot from `cargo test benchmark_recall_quality -- --ignored --nocapture`:
 
-- Semantic stress, `0.7 / 0.3`: Top-1 `0.779`, Top-3 `0.912`, Top-5 `0.956`, MRR `0.842`
-- Lexical-heavy, `0.7 / 0.3`: Top-1 `1.000`, Top-3 `1.000`, Top-5 `1.000`, MRR `1.000`
-- Lexical-heavy, `0.2 / 0.8`: Top-1 `0.980`, Top-3 `1.000`, Top-5 `1.000`, MRR `0.990`
+Latest benchmark snapshot from
+`cargo test benchmark_recall_quality -- --ignored --nocapture`:
+
+- Semantic stress, `0.7 / 0.3`: Top-1 `0.779`, Top-3 `0.912`, Top-5 `0.956`, MRR
+  `0.842`
+- Lexical-heavy, `0.7 / 0.3`: Top-1 `1.000`, Top-3 `1.000`, Top-5 `1.000`, MRR
+  `1.000`
+- Lexical-heavy, `0.2 / 0.8`: Top-1 `0.980`, Top-3 `1.000`, Top-5 `1.000`, MRR
+  `0.990`
 
 Use `cargo run --bin update_retrieval_benchmark_readme` to refresh this block.
+
 <!-- retrieval-benchmark:end -->
 
 On the author's real memory corpus, a read-only weight sweep favored
