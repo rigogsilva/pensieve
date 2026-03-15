@@ -1,5 +1,9 @@
 # Pensieve
 
+<p align="center">
+  <img src="assets/pensieve.png" alt="Pensieve" width="160" />
+</p>
+
 _"I use the Pensieve. One simply siphons the excess thoughts from one's mind,
 pours them into the basin, and examines them at one's leisure."_ — Albus
 Dumbledore
