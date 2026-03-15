@@ -79,8 +79,15 @@ async fn main() {
             let title = title.expect("--title is required");
             let content = content.expect("--content is required");
             let topic_key = topic_key.expect("--topic-key is required");
-            let memory_type =
-                r#type.as_deref().unwrap_or("discovery").parse().expect("invalid memory type");
+            let memory_type = match r#type.as_deref().unwrap_or("discovery").parse() {
+                Ok(t) => t,
+                Err(_) => {
+                    eprintln!(
+                        "Invalid memory type. Use: discovery, gotcha, decision, preference, how-it-works"
+                    );
+                    std::process::exit(1);
+                }
+            };
             let tags_vec = tags
                 .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
                 .unwrap_or_default();
@@ -297,10 +304,7 @@ async fn main() {
                 ops::inject::run_inject(&cfg, query, project, limit, format.as_deref())
             {
                 if !result.is_empty() {
-                    match out_format {
-                        OutputFormat::Json => output_json(&result),
-                        OutputFormat::Human => print!("{result}"),
-                    }
+                    print!("{result}");
                 }
             }
             // Errors are silently ignored — never block the agent
