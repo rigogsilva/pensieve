@@ -24,25 +24,28 @@ agents the Memory Protocol — judgment that can't come from `--help` alone.
 **Research-driven retrieval.** Pensieve's hybrid search is informed by
 real-world findings from teams building agent tooling:
 
-- **Claude Code dropped RAG for grep.** Boris Cherny, creator of Claude Code,
-  [shared](https://www.latent.space/p/claude-code) that early versions used a
-  local vector DB, but agentic search (grep/glob/read) "outperformed everything.
-  By a lot." The agent itself is the semantic layer — it knows what to grep for.
+- **Claude Code dropped RAG for agentic grep.** Boris Cherny, creator of Claude
+  Code, [shared](https://www.latent.space/p/claude-code) that early versions
+  used RAG with vector embeddings (Voyage), but agentic search using grep, glob,
+  and file reads "outperformed everything. By a lot." — for code search, the
+  agent itself is the semantic layer. We applied the same principle to memory:
+  keyword-first retrieval lets the agent reason about what to search for.
 - **Cursor found the sweet spot is both.** Cursor's
   [A/B tests](https://cursor.com/blog/semsearch) showed semantic search adds
-  ~12.5% accuracy on top of grep, especially in large codebases. Neither alone
-  is sufficient.
+  ~12.5% accuracy on top of grep (6.5–23.5% depending on model), especially in
+  large codebases with 1,000+ files. Pure keyword or pure vector alone leaves
+  gaps.
 - **OpenClaw's two-tier memory.**
   [OpenClaw](https://docs.openclaw.ai/concepts/memory) uses daily logs + curated
-  long-term memory, with hybrid retrieval (vector + BM25) and temporal decay.
-  Pensieve adopts the same two-tier pattern (sessions + long-term) and hybrid
-  retrieval, but flips the weights: 70% keyword / 30% vector, because for
-  personal memory stores (<500 entries), keyword precision matters more than
-  semantic breadth.
+  long-term memory, with hybrid retrieval (70% vector / 30% BM25) and temporal
+  decay. Pensieve adopts the same two-tier pattern (sessions + long-term) and
+  hybrid retrieval, but flips the default weights to 70% keyword / 30% vector —
+  for personal memory stores (<500 entries), keyword precision matters more than
+  semantic breadth. Weights are tunable via `pensieve configure`.
 
 The result: BM25 keyword search is primary, vector similarity fills the gaps for
 fuzzy queries like "how do we deploy" matching a memory titled "production
-release process".
+release process". Configurable to taste.
 
 **Markdown as source of truth.** No proprietary database. Every memory is a
 readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
