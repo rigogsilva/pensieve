@@ -129,6 +129,8 @@ pub async fn self_update() -> Result<String> {
         std::fs::set_permissions(&temp_path, std::fs::Permissions::from_mode(0o755))?;
     }
 
+    // On macOS/Unix, can't rename over a running binary — remove first, then move
+    let _ = std::fs::remove_file(&current_exe);
     std::fs::rename(&temp_path, &current_exe)?;
 
     Ok(format!("Updated from v{current_version} to v{latest_version}"))
