@@ -38,11 +38,13 @@ pub fn save_memory(config: &PensieveConfig, input: SaveInput) -> Result<Memory> 
                     });
                 }
             }
+            let scope = if input.project.is_some() { "project" } else { "global" }.to_string();
             Memory {
                 title: input.title,
                 memory_type: input.memory_type,
                 topic_key: input.topic_key,
                 project: input.project,
+                scope,
                 status: existing.status,
                 confidence: input.confidence.or(existing.confidence),
                 revision: existing.revision + 1,
@@ -54,21 +56,25 @@ pub fn save_memory(config: &PensieveConfig, input: SaveInput) -> Result<Memory> 
                 content: input.content,
             }
         }
-        Err(PensieveError::NotFound(_)) => Memory {
-            title: input.title,
-            memory_type: input.memory_type,
-            topic_key: input.topic_key,
-            project: input.project,
-            status: MemoryStatus::Active,
-            confidence: input.confidence,
-            revision: 1,
-            tags: input.tags,
-            source: input.source,
-            superseded_by: None,
-            created: now,
-            updated: now,
-            content: input.content,
-        },
+        Err(PensieveError::NotFound(_)) => {
+            let scope = if input.project.is_some() { "project" } else { "global" }.to_string();
+            Memory {
+                title: input.title,
+                memory_type: input.memory_type,
+                topic_key: input.topic_key,
+                project: input.project,
+                scope,
+                status: MemoryStatus::Active,
+                confidence: input.confidence,
+                revision: 1,
+                tags: input.tags,
+                source: input.source,
+                superseded_by: None,
+                created: now,
+                updated: now,
+                content: input.content,
+            }
+        }
         Err(e) => return Err(e),
     };
 

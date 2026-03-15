@@ -404,6 +404,7 @@ fn test_end_session() {
         &["Decision A".to_string()],
         "test-agent",
         Some("myproject"),
+        false,
     )
     .unwrap();
 
@@ -497,4 +498,139 @@ fn test_configure() {
     // Test retrieval config defaults
     assert!((config.retrieval.keyword_weight - 0.7).abs() < f64::EPSILON);
     assert!((config.retrieval.vector_weight - 0.3).abs() < f64::EPSILON);
+}
+
+#[test]
+fn test_staleness_flag() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save a memory
+    let input = pensieve::ops::save::SaveInput {
+        content: "Old content".to_string(),
+        title: "Stale Memory".to_string(),
+        memory_type: pensieve::types::MemoryType::Discovery,
+        topic_key: "stale-test".to_string(),
+        project: None,
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    pensieve::ops::save::save_memory(&config, input).unwrap();
+
+    // Read the file, modify updated timestamp to 100 days ago, write it back
+    let path = dir.path().join("global").join("stale-test.md");
+    let contents = std::fs::read_to_string(&path).unwrap();
+    let old_date = (chrono::Utc::now() - chrono::Duration::days(100)).to_rfc3339();
+    // Replace the updated field in frontmatter
+    let mut new_contents = String::new();
+    for line in contents.lines() {
+        if line.starts_with("updated:") {
+            new_contents.push_str(&format!("updated: {old_date}"));
+        } else {
+            new_contents.push_str(line);
+        }
+        new_contents.push('\n');
+    }
+    std::fs::write(&path, new_contents).unwrap();
+
+    // Get context and verify it appears in stale_memories
+    let ctx = pensieve::ops::context::get_context(&config, None, None).unwrap();
+    assert!(
+        ctx.stale_memories.iter().any(|m| m.topic_key == "stale-test"),
+        "Expected stale-test in stale_memories"
+    );
+}
+
+#[test]
+fn test_dry_run_end_session() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    let session = pensieve::ops::end_session::end_session(
+        &config,
+        "Dry run session",
+        &["Decision X".to_string()],
+        "test-agent",
+        Some("myproject"),
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(session.summary, "Dry run session");
+
+    // Verify no session file was created
+    let sessions = pensieve::storage::list_sessions(&config, 10).unwrap();
+    assert!(sessions.is_empty(), "Expected no session files for dry run");
+}
+
+#[test]
+fn test_dry_run_configure() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+
+    let new_dir = dir.path().join("custom-dry");
+    let result = pensieve::ops::configure::configure(
+        &config,
+        Some(new_dir.to_str().unwrap()),
+        None,
+        None,
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(result.memory_dir, new_dir);
+
+    // Verify the custom dir was NOT created (dry run should not create dirs)
+    assert!(!new_dir.exists(), "Expected custom dir not to be created in dry run");
+}
+
+#[test]
+fn test_context_alias() {
+    // The "context" alias is a CLI-level feature. We verify here that the
+    // underlying get_context function works the same way it would for both
+    // the "context" and "get-context" subcommands.
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Both commands call the same ops::context::get_context function
+    let ctx = pensieve::ops::context::get_context(&config, None, None).unwrap();
+    assert!(ctx.preferences.is_empty());
+    assert!(ctx.recent_gotchas.is_empty());
+    assert!(ctx.recent_decisions.is_empty());
+
+    // Also verify via the binary that both subcommands are accepted
+    let bin = env!("CARGO_BIN_EXE_pensieve");
+    let output = std::process::Command::new(bin)
+        .arg("--output")
+        .arg("json")
+        .arg("--memory-dir")
+        .arg(dir.path().to_str().unwrap())
+        .arg("context")
+        .output()
+        .expect("failed to run pensieve context");
+    assert!(
+        output.status.success(),
+        "pensieve context should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let output = std::process::Command::new(bin)
+        .arg("--output")
+        .arg("json")
+        .arg("--memory-dir")
+        .arg(dir.path().to_str().unwrap())
+        .arg("get-context")
+        .output()
+        .expect("failed to run pensieve get-context");
+    assert!(
+        output.status.success(),
+        "pensieve get-context should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

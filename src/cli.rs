@@ -54,6 +54,10 @@ pub enum Command {
         #[arg(long)]
         source: Option<String>,
 
+        /// Confidence level (high, medium, low)
+        #[arg(long)]
+        confidence: Option<String>,
+
         /// Expected revision for CAS
         #[arg(long)]
         expected_revision: Option<u32>,
@@ -161,6 +165,10 @@ pub enum Command {
         /// Set vector weight
         #[arg(long)]
         vector_weight: Option<f64>,
+
+        /// Dry run
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Get context for session start
     GetContext {
@@ -193,6 +201,10 @@ pub enum Command {
         /// JSON input
         #[arg(long)]
         json: Option<String>,
+
+        /// Dry run
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Rebuild the search index
     Reindex,
@@ -200,6 +212,21 @@ pub enum Command {
     Schema {
         /// Command name
         command: Option<String>,
+    },
+    /// Get context for session start (alias for get-context)
+    Context {
+        /// Project name
+        #[arg(long)]
+        project: Option<String>,
+
+        /// Source agent
+        #[arg(long)]
+        source: Option<String>,
+    },
+    /// Set up pensieve for AI agents
+    Setup {
+        /// Specific agent to set up (claude, codex). If omitted, detects all.
+        agent: Option<String>,
     },
     /// Start MCP server
     Serve,

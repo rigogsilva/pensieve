@@ -9,4 +9,5 @@ pub mod recall;
 pub mod reindex;
 pub mod save;
 pub mod schema;
+pub mod setup;
 pub mod update;

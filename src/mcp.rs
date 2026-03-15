@@ -337,6 +337,7 @@ impl PensieveServer {
                 params.memory_dir.as_deref(),
                 params.keyword_weight,
                 params.vector_weight,
+                false,
             ) {
                 Ok(new_config) => json_result(&new_config),
                 Err(e) => format!("Error: {e}"),
@@ -370,6 +371,7 @@ impl PensieveServer {
             &params.key_decisions,
             &params.source,
             params.project.as_deref(),
+            false,
         ) {
             Ok(session) => json_result(&session),
             Err(e) => format!("Error: {e}"),

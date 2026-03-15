@@ -8,6 +8,7 @@ pub fn configure(
     memory_dir: Option<&str>,
     keyword_weight: Option<f64>,
     vector_weight: Option<f64>,
+    dry_run: bool,
 ) -> Result<PensieveConfig> {
     let mut new_config = current_config.clone();
 
@@ -19,6 +20,10 @@ pub fn configure(
     }
     if let Some(vw) = vector_weight {
         new_config.retrieval.vector_weight = vw;
+    }
+
+    if dry_run {
+        return Ok(new_config);
     }
 
     storage::ensure_dirs(&new_config)?;

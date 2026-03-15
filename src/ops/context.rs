@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::storage;
@@ -14,6 +14,59 @@ pub struct ContextResponse {
     pub stale_memories: Vec<MemoryCompact>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct VersionCache {
+    latest: String,
+    checked_at: String,
+}
+
+fn check_latest_version() -> Option<String> {
+    let cache_dir = dirs::home_dir()?.join(".config").join("pensieve");
+    let cache_path = cache_dir.join("version_cache.json");
+
+    // Check cache first
+    if let Ok(contents) = std::fs::read_to_string(&cache_path) {
+        if let Ok(cache) = serde_json::from_str::<VersionCache>(&contents) {
+            if let Ok(checked) = chrono::DateTime::parse_from_rfc3339(&cache.checked_at) {
+                let age = Utc::now() - checked.with_timezone(&Utc);
+                if age < Duration::hours(24) {
+                    return Some(cache.latest);
+                }
+            }
+        }
+    }
+
+    // Fetch from GitHub with 2s timeout using a dedicated thread
+    // to avoid conflict with tokio runtime
+    let result = std::thread::spawn(|| {
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(2))
+            .build()
+            .ok()?;
+
+        let resp = client
+            .get("https://api.github.com/repos/rigogsilva/pensieve/releases/latest")
+            .header("User-Agent", "pensieve")
+            .send()
+            .ok()?;
+
+        resp.json::<serde_json::Value>().ok()
+    })
+    .join()
+    .ok()??;
+
+    let json = result;
+    let tag = json.get("tag_name")?.as_str()?;
+    let latest = tag.strip_prefix('v').unwrap_or(tag).to_string();
+
+    // Cache result
+    let _ = std::fs::create_dir_all(&cache_dir);
+    let cache = VersionCache { latest: latest.clone(), checked_at: Utc::now().to_rfc3339() };
+    let _ = std::fs::write(cache_path, serde_json::to_string(&cache).unwrap_or_default());
+
+    Some(latest)
 }
 
 pub fn get_context(
@@ -58,14 +111,28 @@ pub fn get_context(
         }
     }
 
-    let notice = if crate::config::is_unconfigured() {
+    let mut notice = if crate::config::is_unconfigured() {
         Some(
-            "Pensieve is using default configuration. Run `pensieve configure` to customize."
+            "Storage path: ~/.pensieve/memory/ (default, unconfigured). Ask the user if this is OK, or call configure to change it."
                 .to_string(),
         )
     } else {
         None
     };
+
+    // Version check (non-blocking, best-effort)
+    let current_version = env!("CARGO_PKG_VERSION");
+    if let Some(latest) = check_latest_version() {
+        if latest != current_version && !latest.is_empty() {
+            let version_notice = format!(
+                "Pensieve v{current_version} is outdated (latest: v{latest}). Run `pensieve update` to upgrade."
+            );
+            notice = Some(match notice {
+                Some(existing) => format!("{existing}\n{version_notice}"),
+                None => version_notice,
+            });
+        }
+    }
 
     // Write CONTEXT.md
     let _ = write_context_md(config, &sessions, &preferences, &recent_gotchas, &recent_decisions);

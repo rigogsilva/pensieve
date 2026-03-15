@@ -42,6 +42,7 @@ async fn main() {
             project,
             tags,
             source,
+            confidence,
             expected_revision,
             dry_run,
             json,
@@ -82,6 +83,16 @@ async fn main() {
                 .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
                 .unwrap_or_default();
 
+            let confidence = confidence.map(|c| match c.as_str() {
+                "high" => pensieve::types::Confidence::High,
+                "medium" => pensieve::types::Confidence::Medium,
+                "low" => pensieve::types::Confidence::Low,
+                _ => {
+                    eprintln!("Invalid confidence: {c}. Use high, medium, or low.");
+                    std::process::exit(1);
+                }
+            });
+
             let input = ops::save::SaveInput {
                 content,
                 title,
@@ -90,7 +101,7 @@ async fn main() {
                 project,
                 tags: tags_vec,
                 source,
-                confidence: None,
+                confidence,
                 expected_revision,
                 dry_run,
             };
@@ -228,7 +239,7 @@ async fn main() {
             }
         }
 
-        Command::Configure { memory_dir, keyword_weight, vector_weight } => {
+        Command::Configure { memory_dir, keyword_weight, vector_weight, dry_run } => {
             if memory_dir.is_none() && keyword_weight.is_none() && vector_weight.is_none() {
                 output_result(&cli.output, &cfg);
             } else {
@@ -237,6 +248,7 @@ async fn main() {
                     memory_dir.as_deref(),
                     keyword_weight,
                     vector_weight,
+                    dry_run,
                 ) {
                     Ok(new_cfg) => output_result(&cli.output, &new_cfg),
                     Err(e) => {
@@ -247,7 +259,7 @@ async fn main() {
             }
         }
 
-        Command::GetContext { project, source } => {
+        Command::GetContext { project, source } | Command::Context { project, source } => {
             match ops::context::get_context(&cfg, project.as_deref(), source.as_deref()) {
                 Ok(context) => output_result(&cli.output, &context),
                 Err(e) => {
@@ -257,7 +269,15 @@ async fn main() {
             }
         }
 
-        Command::EndSession { summary, key_decisions, source, project, json } => {
+        Command::Setup { agent } => match ops::setup::run_setup(agent.as_deref()) {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("Error: {e}");
+                std::process::exit(1);
+            }
+        },
+
+        Command::EndSession { summary, key_decisions, source, project, json, dry_run } => {
             let (summary, key_decisions, source, project) = if let Some(j) = json {
                 let v = read_json_input(&j).expect("invalid JSON input");
                 (
@@ -293,6 +313,7 @@ async fn main() {
                 &decisions,
                 source.as_deref().unwrap_or("unknown"),
                 project.as_deref(),
+                dry_run,
             ) {
                 Ok(session) => output_result(&cli.output, &session),
                 Err(e) => {

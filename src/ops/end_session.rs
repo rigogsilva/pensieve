@@ -10,18 +10,12 @@ pub fn end_session(
     key_decisions: &[String],
     source: &str,
     project: Option<&str>,
+    dry_run: bool,
 ) -> Result<SessionSummary> {
     storage::ensure_dirs(config)?;
 
     let now = Utc::now();
     let project_str = project.unwrap_or("unknown");
-    let filename = format!(
-        "{}T{}-{}-{}.md",
-        now.format("%Y-%m-%d"),
-        now.format("%H%M%S"),
-        project_str,
-        source
-    );
 
     let session = SessionSummary {
         summary: summary.to_string(),
@@ -30,6 +24,18 @@ pub fn end_session(
         project: project.map(String::from),
         created: now,
     };
+
+    if dry_run {
+        return Ok(session);
+    }
+
+    let filename = format!(
+        "{}T{}-{}-{}.md",
+        now.format("%Y-%m-%d"),
+        now.format("%H%M%S"),
+        project_str,
+        source
+    );
 
     let frontmatter = format!(
         "---\ntitle: Session {date} {project} ({source})\nsource: {source}\nproject: {project}\ncreated: {created}\nkey_decisions:\n{decisions}---\n\n{summary}\n",

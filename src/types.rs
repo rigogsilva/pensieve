@@ -86,6 +86,8 @@ pub struct Memory {
     pub topic_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub project: Option<String>,
+    #[serde(default = "default_scope")]
+    pub scope: String,
     pub status: MemoryStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confidence: Option<Confidence>,
@@ -100,6 +102,10 @@ pub struct Memory {
     pub updated: DateTime<Utc>,
     #[serde(skip)]
     pub content: String,
+}
+
+fn default_scope() -> String {
+    "global".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
