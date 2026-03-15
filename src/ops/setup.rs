@@ -44,7 +44,7 @@ If the markers don't exist, append the following block to CLAUDE.md (or create i
 <!-- pensieve:start -->
 ## Memory Protocol
 
-This project uses Pensieve for cross-agent memory. At session start, call `pensieve get-context` to load relevant memories. When you learn something important (gotchas, decisions, preferences, discoveries), save it with `pensieve save`. At session end, call `pensieve end-session` with a summary.
+This project uses Pensieve for cross-agent memory. At session start, call `pensieve context` to load relevant memories. When you learn something important (gotchas, decisions, preferences, discoveries), save it with `pensieve save`. At session end, call `pensieve end-session` with a summary.
 
 Memory types: gotcha, decision, preference, discovery, how-it-works
 <!-- pensieve:end -->
@@ -57,7 +57,7 @@ If markers already exist, replace the content between them with the block above.
 Run this command to verify the setup:
 
 ```bash
-pensieve get-context
+pensieve context
 ```
 
 If it returns a response (even with empty fields), the setup is complete.
@@ -87,7 +87,7 @@ If the markers don't exist, append the following block to AGENTS.md (or create i
 <!-- pensieve:start -->
 ## Memory Protocol
 
-This project uses Pensieve for cross-agent memory. At session start, run `pensieve get-context` to load relevant memories. When you learn something important (gotchas, decisions, preferences, discoveries), save it with `pensieve save`. At session end, run `pensieve end-session` with a summary.
+This project uses Pensieve for cross-agent memory. At session start, run `pensieve context` to load relevant memories. When you learn something important (gotchas, decisions, preferences, discoveries), save it with `pensieve save`. At session end, run `pensieve end-session` with a summary.
 
 Memory types: gotcha, decision, preference, discovery, how-it-works
 <!-- pensieve:end -->
@@ -100,7 +100,7 @@ If markers already exist, replace the content between them with the block above.
 Run this command to verify the setup:
 
 ```bash
-pensieve get-context
+pensieve context
 ```
 
 If it returns a response (even with empty fields), the setup is complete.
@@ -110,12 +110,51 @@ Tell the user: "Pensieve is set up! I'll now remember things across sessions."
     .to_string()
 }
 
+fn claude_desktop_skill_content() -> String {
+    let bin_path = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.to_str().map(String::from))
+        .unwrap_or_else(|| "pensieve".to_string());
+
+    format!(
+        r#"---
+name: pensieve-setup
+description: Set up Pensieve cross-agent memory for Claude Desktop
+---
+
+# Pensieve Setup Skill
+
+When the user asks you to "set up pensieve", follow these steps:
+
+## Step 1: Add Pensieve to MCP config
+
+Read the Claude Desktop config file at:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/claude-desktop/config.json`
+
+Add the following to the `mcpServers` object (merge with existing servers, don't replace):
+
+```json
+"pensieve": {{
+  "command": "{bin_path}",
+  "args": ["serve"]
+}}
+```
+
+Write the file back.
+
+## Step 2: Tell the user
+
+Tell the user: "Pensieve has been added to Claude Desktop. Please restart Claude Desktop to activate."
+
+After restart, call `get_context` to verify the tools are working.
+"#
+    )
+}
+
 fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
     let home = home_dir()?;
     let mut agents = Vec::new();
-
-    let claude_dir = home.join(".claude");
-    let codex_dir = home.join(".codex");
 
     let should_include = |name: &str| filter.is_none() || filter == Some(name);
 
@@ -123,7 +162,7 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
         agents.push(AgentInfo {
             name: "claude",
             display_name: "Claude Code",
-            config_dir: claude_dir,
+            config_dir: home.join(".claude"),
             skills_dir: home.join(".claude").join("skills"),
             skill_filename: "pensieve-setup.md",
             skill_content: claude_skill_content(),
@@ -134,10 +173,26 @@ fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
         agents.push(AgentInfo {
             name: "codex",
             display_name: "Codex CLI",
-            config_dir: codex_dir,
+            config_dir: home.join(".codex"),
             skills_dir: home.join(".codex").join("skills"),
             skill_filename: "pensieve-setup.md",
             skill_content: codex_skill_content(),
+        });
+    }
+
+    if should_include("claude-desktop") {
+        let config_dir = if cfg!(target_os = "macos") {
+            home.join("Library/Application Support/Claude")
+        } else {
+            home.join(".config/claude-desktop")
+        };
+        agents.push(AgentInfo {
+            name: "claude-desktop",
+            display_name: "Claude Desktop",
+            config_dir,
+            skills_dir: home.join(".claude").join("skills"),
+            skill_filename: "pensieve-setup-desktop.md",
+            skill_content: claude_desktop_skill_content(),
         });
     }
 
@@ -158,7 +213,6 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
 
     for agent in &agents {
         if agent.config_dir.exists() {
-            // Agent detected — install skill
             std::fs::create_dir_all(&agent.skills_dir)?;
             let skill_path = agent.skills_dir.join(agent.skill_filename);
             std::fs::write(&skill_path, &agent.skill_content)?;
@@ -173,7 +227,6 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
         }
     }
 
-    // Always show Cursor as not detected (no support yet)
     if agent_filter.is_none() {
         println!("  \u{2717} Cursor \u{2014} not detected");
     }
