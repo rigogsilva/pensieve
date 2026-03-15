@@ -4,13 +4,37 @@ _"I use the Pensieve. One simply siphons the excess thoughts from one's mind,
 pours them into the basin, and examines them at one's leisure."_ — Albus
 Dumbledore
 
-A shared memory system for AI agents. One brain, every AI.
+An agent-first memory system. One brain, every AI.
 
 Every AI agent starts from zero. Claude Code has memory files locked in
 `~/.claude/` — invisible to Codex, Cursor, Copilot, Gemini CLI. Like
 Dumbledore's stone basin, Pensieve lets you extract thoughts and examine them
 later — one memory store that any agent can read and write, via CLI, MCP, or
 plain file access.
+
+## Why Pensieve
+
+**Agent-first design.** Inspired by
+[Google's approach to building CLIs for AI agents](https://justin.poehnelt.com/posts/rewrite-your-cli-for-ai-agents/),
+Pensieve is designed for agents first, humans second. Every command has
+`--output json`, schema introspection (`pensieve schema save`), `--json` input
+from files or stdin, `--dry-run` for safe previews, and skill files that teach
+agents the Memory Protocol — judgment that can't come from `--help` alone.
+
+**Research-driven retrieval.** We studied how Claude Code's built-in memory
+works, analyzed [OpenClaw](https://github.com/claw-project/openclaw)'s two-tier
+memory system (long-term + session), and ran empirical tests comparing keyword
+vs semantic search. The result: a hybrid approach where BM25 keyword search
+(70%) is primary and vector similarity (30%) fills semantic gaps — because in
+practice, an agent with grep beats pure vector search.
+
+**Markdown as source of truth.** No proprietary database. Every memory is a
+readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
+index is a rebuildable sidecar — delete it, run `pensieve reindex`, and you're
+back. Cloud sync via iCloud or Google Drive just works.
+
+**Three tiers of access.** MCP for agents that support it, CLI for everything
+else, and raw file access as the universal fallback. No agent is locked out.
 
 ## How it works
 
