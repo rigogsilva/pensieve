@@ -132,7 +132,57 @@ Both have identical capabilities. MCP tools are preferred when available.
 
 If markers already exist, replace the content between them with the block above.
 
-## Step 3: Verify
+## Step 3: Set up auto-inject hooks (if supported)
+
+If your agent supports pre-prompt hooks, set them up so relevant memories are
+automatically injected before every prompt — no manual recall needed.
+
+### Claude Code
+
+Read `~/.claude/settings.json`. If it doesn't exist, create it. If it exists,
+parse the JSON and merge (don't replace existing hooks).
+
+Add these two hooks if not already present (check for "pensieve" in existing
+hook commands to avoid duplicates):
+
+```json
+{{
+  "hooks": {{
+    "UserPromptSubmit": [
+      {{
+        "hooks": [
+          {{
+            "type": "command",
+            "command": "{bin} recall \"$USER_PROMPT\" --output json --limit 3 2>/dev/null || true"
+          }}
+        ]
+      }}
+    ],
+    "SessionStart": [
+      {{
+        "hooks": [
+          {{
+            "type": "command",
+            "command": "{bin} context --output json 2>/dev/null || true"
+          }}
+        ]
+      }}
+    ]
+  }}
+}}
+```
+
+The `UserPromptSubmit` hook auto-injects relevant memories before every prompt.
+The `SessionStart` hook loads context at session start and after compaction.
+The `2>/dev/null || true` ensures hooks never block if pensieve has issues.
+
+### Codex CLI or other agents
+
+If your agent supports pre-prompt hooks, add equivalent hooks using the same
+commands. If not, skip this step — the Memory Protocol in Step 2 tells you when
+to manually recall.
+
+## Step 4: Verify
 
 Run this command to verify the setup:
 
@@ -142,7 +192,8 @@ Run this command to verify the setup:
 
 If it returns a response (even with empty fields), the setup is complete.
 
-Tell the user: "Pensieve is set up! I'll now remember things across sessions."
+Tell the user: "Pensieve is set up! Relevant memories will be automatically
+injected before every prompt. I'll also save important discoveries as we work."
 "#
     )
 }

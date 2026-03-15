@@ -171,7 +171,32 @@ format = "compact"           # compact | json | silent
 
 `pensieve configure --inject-enabled false` to disable without removing hooks.
 
-### R5: SessionStart hook for context recovery
+### R5: Update README with auto-inject documentation
+
+Add an "Auto-inject" section to the README explaining:
+
+- **What it does**: Relevant memories are automatically injected before every
+  prompt — the agent doesn't need to remember to search
+- **Why it matters**: Agents don't know what they don't know. Without
+  auto-inject, they miss relevant memories because they never search. Every
+  major agent memory system (OpenClaw, Mem0, CrewAI, LangGraph) has converged on
+  this pattern.
+- **Platform support table**:
+
+| Agent          | Auto-inject | Mechanism               | Fallback          |
+| -------------- | ----------- | ----------------------- | ----------------- |
+| Claude Code    | Yes         | `UserPromptSubmit` hook | —                 |
+| Claude Desktop | No          | No hook support         | Manual MCP recall |
+| Codex CLI      | No          | No hook support yet     | Manual CLI recall |
+| Cursor         | No          | No hook support         | Manual CLI recall |
+
+- **How it works**: `pensieve setup` wires the hooks automatically. The
+  `UserPromptSubmit` hook runs `pensieve recall` with the user's prompt and
+  injects matching memories. The `SessionStart` hook runs `pensieve context` to
+  recover knowledge after compaction.
+- **How to disable**: `pensieve configure --inject-enabled false`
+
+### R6: SessionStart hook for context recovery
 
 After context compaction, Claude Code fires `SessionStart` again. Wire a
 `SessionStart` hook that runs `pensieve context --output compact` to
@@ -193,6 +218,8 @@ context after compaction" problem without agent action.
 - Hooks use the full binary path (not just `pensieve`)
 - Agents without hook support continue working via the existing skill-based
   approach
+- README has an "Auto-inject" section with platform support table and
+  explanation of why auto-inject matters
 
 ## Out of Scope
 
