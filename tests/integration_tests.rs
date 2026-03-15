@@ -479,21 +479,22 @@ fn test_configure() {
     let dir = TempDir::new().unwrap();
     let config = test_config(&dir);
 
-    let new_dir = dir.path().join("custom-memory");
-    let new_config = pensieve::ops::configure::configure(
-        &config,
-        Some(new_dir.to_str().unwrap()),
-        Some(0.5),
-        Some(0.5),
-    )
-    .unwrap();
+    // Test config loading with defaults
+    let loaded = pensieve::config::load_config(None).unwrap();
+    assert!(loaded.memory_dir.ends_with(".pensieve/memory"));
 
-    assert_eq!(new_config.memory_dir, new_dir);
-    assert!((new_config.retrieval.keyword_weight - 0.5).abs() < f64::EPSILON);
-    assert!((new_config.retrieval.vector_weight - 0.5).abs() < f64::EPSILON);
+    // Test CLI override
+    let custom_dir = dir.path().join("custom");
+    let loaded = pensieve::config::load_config(Some(custom_dir.to_str().unwrap())).unwrap();
+    assert_eq!(loaded.memory_dir, custom_dir);
 
-    // Verify directories were created
-    assert!(new_dir.join("global").exists());
-    assert!(new_dir.join("projects").exists());
-    assert!(new_dir.join("sessions").exists());
+    // Test ensure_dirs creates subdirectories
+    pensieve::storage::ensure_dirs(&config).unwrap();
+    assert!(dir.path().join("global").exists());
+    assert!(dir.path().join("projects").exists());
+    assert!(dir.path().join("sessions").exists());
+
+    // Test retrieval config defaults
+    assert!((config.retrieval.keyword_weight - 0.7).abs() < f64::EPSILON);
+    assert!((config.retrieval.vector_weight - 0.3).abs() < f64::EPSILON);
 }
