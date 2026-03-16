@@ -55,7 +55,7 @@ DO NOT create or modify any file in the current working directory.
 
 Read the target file. Then:
 1. If the file doesn't exist or `<!-- pensieve:start -->` markers are absent → append the full canonical block below (create the file if needed).
-2. If markers **do** exist → extract the current content between them and **compare it to the canonical block below**. If there is *any* difference (missing lines, outdated wording, wrong commands, truncated sections) → replace the entire content between the markers with the canonical version. Do NOT skip this step just because the markers are present — presence ≠ correctness.
+2. If markers **do** exist → read the full content between them, then read the canonical block below, and **compare them yourself**. Do not ask the user what's different — you must determine this by reading both. If there is *any* difference (missing lines, outdated wording, wrong commands, truncated sections) → replace the entire content between the markers with the canonical version. Do NOT declare success just because the markers are present — presence ≠ correctness.
 
 The canonical block to write (including markers):
 
@@ -143,7 +143,12 @@ Trigger when: user says goodbye/done/thanks, task is fully complete, or conversa
 All agents that support session hooks should wire `SessionStart` to load context
 at session start and after compaction. This is NOT opt-in — always set it up.
 
-### Auto-inject hook (ask the user first)
+### Auto-inject hook (strictly opt-in — only add if user explicitly says yes)
+
+The `UserPromptSubmit` / `BeforeAgent` / `beforeSubmitPrompt` hooks are **opt-in only**.
+Do not add them unless the user has explicitly said "yes" to auto-inject **in this
+conversation**. If there is any ambiguity — if the user hasn't been asked yet, or
+hasn't answered — skip these hooks entirely. Never assume consent.
 
 Ask the user: "Would you like to enable auto-inject? Without it, I only use
 Pensieve when you explicitly ask me to recall something — meaning I'll miss
@@ -156,8 +161,8 @@ If the user says **yes**:
 1. Run: `/Users/rigo/bin/pensieve configure --inject-enabled true`
 2. Add the pre-prompt hook for your agent (see below)
 
-If the user says **no**: skip the pre-prompt hook, but still add the
-SessionStart hook above.
+If the user says **no** or hasn't answered: skip the pre-prompt hook entirely.
+Still add the SessionStart and PostCompact hooks — those are always added.
 
 ### Claude Code
 
