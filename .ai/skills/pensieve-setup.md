@@ -18,7 +18,7 @@ Determine which agent you are and follow the matching section:
 Register the MCP server:
 
 ```bash
-claude mcp add --transport stdio --scope user pensieve -- /Users/rigo/bin/pensieve serve
+claude mcp add --transport stdio --scope user pensieve -- __PENSIEVE_BIN__ serve
 ```
 
 Then add the Memory Protocol (see Step 2).
@@ -35,7 +35,7 @@ replace them):
 
 ```json
 "pensieve": {
-  "command": "/Users/rigo/bin/pensieve",
+  "command": "__PENSIEVE_BIN__",
   "args": ["serve"]
 }
 ```
@@ -79,14 +79,14 @@ The canonical block to write (including markers):
 ## Memory Protocol
 
 This project uses [Pensieve](https://github.com/rigogsilva/pensieve) for cross-agent persistent memory.
-Binary: `/Users/rigo/bin/pensieve`
+Binary: `__PENSIEVE_BIN__`
 
 **These steps are mandatory. Skipping any required step is a protocol violation.**
 
 ### Access
 Use whichever is available — both have identical capabilities:
 - **MCP tools** (preferred): `save_memory`, `recall`, `get_context`, `end_session`, `read_memory`, `delete_memory`, `list_memories`, `archive_memory`, `configure`
-- **CLI** (always works): `/Users/rigo/bin/pensieve <subcommand>`
+- **CLI** (always works): `__PENSIEVE_BIN__ <subcommand>`
 
 If MCP tools are unavailable, use CLI immediately — do not skip.
 
@@ -101,7 +101,7 @@ get_context(project, source)
 ````
 or
 ```bash
-/Users/rigo/bin/pensieve context 2>/dev/null || true
+__PENSIEVE_BIN__ context 2>/dev/null || true
 ````
 
 If `get_context` has not been called yet this session, stop and do it now. If it
@@ -119,7 +119,7 @@ recall("query")
 or
 
 ```bash
-/Users/rigo/bin/pensieve recall "query"
+__PENSIEVE_BIN__ recall "query"
 ```
 
 Also search when the user says "remember" or references past work. If recall
@@ -149,7 +149,7 @@ end_session(summary, project, source)
 or
 
 ```bash
-/Users/rigo/bin/pensieve end-session --summary "2-3 sentence summary" --project <project> --source <agent>
+__PENSIEVE_BIN__ end-session --summary "2-3 sentence summary" --project <project> --source <agent>
 ```
 
 Trigger when: user says goodbye/done/thanks, task is fully complete, or
@@ -185,10 +185,10 @@ Pensieve when you explicitly ask me to recall something — meaning I'll miss
 relevant memories I don't know to look for. With auto-inject enabled, relevant
 memories are automatically surfaced before every prompt, so I always have
 context even when I don't know to search for it. It's opt-in and you can
-disable it anytime with `/Users/rigo/bin/pensieve configure --inject-enabled false`."
+disable it anytime with `__PENSIEVE_BIN__ configure --inject-enabled false`."
 
 If the user says **yes**:
-1. Run: `/Users/rigo/bin/pensieve configure --inject-enabled true`
+1. Run: `__PENSIEVE_BIN__ configure --inject-enabled true`
 2. Add the pre-prompt hook for your agent (see below)
 
 If the user says **no** or hasn't answered: skip the pre-prompt hook entirely.
@@ -204,7 +204,7 @@ If it exists, parse the JSON and **compare each pensieve hook command to the can
 {
   "permissions": {
     "allow": [
-      "Bash(/Users/rigo/bin/pensieve*)"
+      "Bash(__PENSIEVE_BIN__*)"
     ]
   },
   "hooks": {
@@ -213,7 +213,7 @@ If it exists, parse the JSON and **compare each pensieve hook command to the can
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/rigo/bin/pensieve inject --limit 3"
+            "command": "__PENSIEVE_BIN__ inject --limit 3"
           }
         ]
       }
@@ -223,7 +223,7 @@ If it exists, parse the JSON and **compare each pensieve hook command to the can
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/rigo/bin/pensieve context 2>/dev/null || true"
+            "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
           }
         ]
       }
@@ -233,7 +233,7 @@ If it exists, parse the JSON and **compare each pensieve hook command to the can
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/rigo/bin/pensieve end-session --summary \\"$(cat | jq -r '.compact_summary')\\" --source claude-code 2>/dev/null || true"
+            "command": "__PENSIEVE_BIN__ end-session --summary \\"$(cat | jq -r '.compact_summary')\\" --source claude-code 2>/dev/null || true"
           }
         ]
       }
@@ -258,7 +258,7 @@ hooks. Check for "pensieve" to avoid duplicates.
   "hooks": {
     "beforeSubmitPrompt": [
       {
-        "command": "/Users/rigo/bin/pensieve inject --limit 3"
+        "command": "__PENSIEVE_BIN__ inject --limit 3"
       }
     ]
   }
@@ -278,13 +278,13 @@ existing hooks. Check for "pensieve" to avoid duplicates.
     "BeforeAgent": [
       {
         "type": "command",
-        "command": "/Users/rigo/bin/pensieve inject --limit 3"
+        "command": "__PENSIEVE_BIN__ inject --limit 3"
       }
     ],
     "SessionStart": [
       {
         "type": "command",
-        "command": "/Users/rigo/bin/pensieve context 2>/dev/null || true"
+        "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
       }
     ]
   }
@@ -304,7 +304,7 @@ Only `SessionStart` is available (no pre-prompt hook yet). Always add it:
     "SessionStart": [
       {
         "type": "command",
-        "command": "/Users/rigo/bin/pensieve context 2>/dev/null || true"
+        "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
       }
     ]
   }
@@ -321,9 +321,9 @@ Before declaring success, confirm each of the following — don't just run
    exactly matches the canonical block from Step 2. If it doesn't, fix it now.
 2. **Hooks** — re-read the hooks config and confirm every canonical hook command
    is present verbatim. If any are missing or wrong, fix them now.
-3. **MCP registration** — run `/Users/rigo/bin/pensieve context` and confirm it
-   returns a response (not an error). If it errors, the MCP server or CLI path
-   is broken.
+3. **MCP registration** — run `__PENSIEVE_BIN__ context` and confirm it returns
+   a response (not an error). If it errors, the MCP server or CLI path is
+   broken.
 
 Only after all three pass, tell the user what was set up (or updated) and what
 was already correct. Be specific — "Memory Protocol was up to date, hooks were
