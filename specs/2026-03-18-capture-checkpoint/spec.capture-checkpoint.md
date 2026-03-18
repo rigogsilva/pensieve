@@ -1,6 +1,6 @@
 # Capture Checkpoint: Improving Memory Capture Rates
 
-**Status:** Draft **Author:** Rigo **Date:** 2026-03-18
+**Status:** Refining **Author:** Rigo **Date:** 2026-03-18
 
 ## Problem
 
@@ -30,71 +30,114 @@ Pensieve's agent-driven approach is intentionally chosen for memory quality
 not to abandon this approach but to augment it with reliable nudging and
 optimized protocol text.
 
-## Goal
+## Key Repositories
 
-Improve memory capture rates through three mechanisms:
-
-1. **Eval-driven protocol optimization** — use skill-creator to measure and
-   iteratively improve the Memory Protocol instructions
-2. **Inject-based capture nudge** — modify `pensieve inject` to periodically
-   remind agents to save, triggered after the Nth call in a session
-3. **Protocol text improvements** — backport optimized text + common patterns
-   into the pensieve-setup canonical block
+- **pensieve** (`rigogsilva/pensieve`) — this repo. All changes land here.
 
 ## Approach
 
 ### Phase 1: Eval harness
 
-Create a standalone skill with the current Memory Protocol capture instructions.
-Define eval cases — simulated conversations containing decisions, user
-corrections, gotchas, and rejected approaches where specific memories _should_
-be saved. Use skill-creator to run baseline evals measuring capture rate, type
-distribution, and whether high-value memories are saved.
+Create a standalone skill containing the current Memory Protocol capture
+instructions (Step 3 from the canonical block). Define eval cases — simulated
+conversations containing decisions, user corrections, gotchas, and rejected
+approaches where specific memories _should_ be saved.
 
-**Eval cases should cover:**
+**How evals work:** Each eval case is a prompt simulating a conversation
+exchange. The agent receives the Memory Protocol skill instructions and the
+prompt. The skill-creator grader inspects the agent's transcript for
+`pensieve save --json` tool calls and evaluates whether the correct memory type
+and content was produced. No actual writes to pensieve — grading is purely
+transcript-based.
 
-- A user correcting the agent's approach (should save: `preference`)
-- A design decision being made (should save: `decision`)
-- A surprising bug cause discovered (should save: `gotcha`)
-- A rejected alternative discussed (should save: `decision` with rationale)
-- A multi-turn task where nothing noteworthy happens (should save: nothing)
-- A session where an existing memory should be updated (should: revise, not
-  create new)
+**Eval cases:**
+
+| ID  | Scenario                                   | Expected save                           |
+| --- | ------------------------------------------ | --------------------------------------- |
+| 1   | User corrects agent's approach             | `preference` with correction details    |
+| 2   | Design decision made during implementation | `decision` with rationale               |
+| 3   | Surprising bug cause discovered            | `gotcha` with root cause                |
+| 4   | Alternative discussed and rejected         | `decision` with rejected option + why   |
+| 5   | Multi-turn task, nothing noteworthy        | No save (negative case)                 |
+| 6   | Existing memory should be updated          | Save with existing `topic_key` (revise) |
+
+**Eval case source:** Real session transcripts from `~/.claude/projects/` JSONL
+files. Mine conversations where decisions were made, preferences expressed, or
+bugs discovered, and check whether a `pensieve save` call appears. Conversations
+where it _should have_ but _didn't_ are the strongest eval cases. Available
+sessions: 280+ across 15+ projects (wearhouse: 51, beamer: 98, jarvis: 50,
+pensieve: 16, etc.).
 
 **Model:** Sonnet for eval runs (realistic agent behavior).
 
+**Baseline metrics collected:**
+
+- Capture rate: how many of 6 cases produce a correct save
+- Type accuracy: did it use the right memory type
+- Revision behavior: did case 6 reuse the topic_key
+
 ### Phase 2: Protocol optimization
 
-Use skill-creator's optimize loop to iterate on the protocol text. The
-skill-creator tweaks instructions, re-runs evals, and measures improvement. The
-optimized output becomes the new protocol text.
+Iterate on the Memory Protocol text using skill-creator's eval + grading cycle.
+This is human-in-the-loop: run evals, read grading feedback, improve the
+protocol text, re-run evals, measure improvement.
 
-Key areas to optimize:
+Note: this is NOT the automated `run_loop.py` optimizer (which tunes skill
+_descriptions_ for triggering accuracy). We use the standard eval → grade →
+iterate cycle for content quality.
+
+**Key areas to optimize:**
 
 - Step 3 (during work) — the save triggers and type guidance
 - CLI usage section — common save patterns for under-captured types
-- Revision guidance — prompting agents to update existing memories
+- Revision guidance — prompting agents to reuse `topic_key` to update
 - Project parameter — always pass `--project` in known contexts
 
 ### Phase 3: Inject nudge (Rust change)
 
-Small addition to `pensieve inject`:
+Small addition to `pensieve inject` to periodically remind agents to save.
 
-- Track invocation count per session (counter in SQLite or temp file, reset on
-  `SessionStart`)
-- After the Nth call (configurable, default 5), append a capture nudge to the
-  inject output:
+**Counter mechanism:**
+
+- `pensieve inject` reads a counter from `$TMPDIR/pensieve-inject-count`
+- On each call: read count → increment → write back
+- `SessionStart` hook resets the counter by deleting the file
+
+**Nudge behavior:**
+
+- After every Nth invocation (configurable, default 5), append a one-line
+  capture nudge to the inject output:
   ```
-  [Pensieve: capture check — any decisions, preferences, or corrections
-  worth saving?]
+  [Pensieve: capture check — any decisions, preferences, or corrections worth saving?]
   ```
-- The nudge is just text — the main agent decides whether to act on it
-- Configurable: `pensieve configure --nudge-after 5` (0 = disabled)
+- Nudge fires at call 5, 10, 15, etc. (every N calls)
+- The nudge is plain text appended after the normal inject output
+- The main agent decides whether to act on it
+
+**Configuration:**
+
+- `pensieve configure --nudge-every 5` (default 5, 0 = disabled)
+- Stored as `inject.nudge_every` in `~/.config/pensieve/config.toml`
+
+**SessionStart hook update:**
+
+Update the canonical `SessionStart` hook command in `pensieve-setup.md` from:
+
+```
+pensieve context 2>/dev/null || true
+```
+
+to:
+
+```
+rm -f "$TMPDIR/pensieve-inject-count"; pensieve context 2>/dev/null || true
+```
 
 ### Phase 4: Integration
 
 - Backport optimized protocol text into `pensieve-setup.md` canonical block
-- Include the inject nudge in the setup skill's hook configuration
+- Update `SessionStart` hook in canonical block to include counter reset
+- Add `nudge_every` default to InjectConfig
 - Release new version
 - Re-run evals to confirm improvement over baseline
 
@@ -102,39 +145,105 @@ Small addition to `pensieve inject`:
 
 ### R1: Eval harness via skill-creator
 
-- Standalone skill containing current Memory Protocol capture instructions
-- Minimum 6 eval cases covering all memory types + negative case + revision case
-- Baseline metrics: capture rate, type distribution, revision rate
-- Reproducible: same scenarios, same model, comparable results
+- Standalone skill file containing current Memory Protocol capture instructions
+- 6 eval cases as defined in Phase 1 table
+- Eval expectations check for `pensieve save` tool calls in transcript
+- Grading produces per-case pass/fail + aggregate capture rate
+- Reproducible: same scenarios, same model, comparable results across runs
 
 ### R2: Protocol optimization
 
-- Skill-creator optimize loop produces measurably better capture instructions
-- Target: 2x improvement in decision/preference capture rate over baseline
-- Optimized text must remain concise (agents ignore verbose instructions)
+- At least 2 iterations of the eval → grade → improve cycle
+- Each iteration produces a grading.json with pass rates
+- Final protocol text shows higher capture rate than baseline
+- Optimized text must fit within the existing canonical block structure (Steps
+  1-4 + CLI usage + Tips)
 
 ### R3: Inject nudge
 
-- `pensieve inject` tracks call count per session
-- After configurable Nth call, appends one-line capture reminder
-- Counter resets on `SessionStart`
-- Nudge is configurable and can be disabled
-- No new CLI commands — this is an extension of existing `inject` behavior
+- `pensieve inject` reads/increments a counter at
+  `$TMPDIR/pensieve-inject-count`
+- At every Nth call (where N = `inject.nudge_every` config), appends nudge line
+- Counter file is plain text containing a single integer
+- If counter file doesn't exist, inject creates it starting at 1
+- If counter file is unreadable, inject silently starts at 1 (never block)
+- Nudge line format:
+  `[Pensieve: capture check — any decisions, preferences, or corrections worth saving?]`
+- New config field: `inject.nudge_every` (u32, default 5, 0 = disabled)
+- Nudge is appended after normal inject output (relevant memories first, nudge
+  last)
 
 ### R4: Canonical block update
 
 - Optimized protocol text backported to `pensieve-setup.md`
-- Common save patterns (JSON examples for decision, preference) in CLI section
-- Project parameter guidance
-- Revision guidance
+- Common save patterns (JSON examples for `decision` and `preference`) in CLI
+  usage section
+- Project parameter guidance: "always pass `--project` when working in a known
+  project context"
+- Revision guidance: "reuse an existing `topic_key` to update a memory rather
+  than creating a new one"
+- Updated `SessionStart` hook command includes counter reset
 
-## Non-Goals
+## Acceptance Criteria
+
+- **AC1:** Eval baseline establishes a numeric capture rate (X/6 cases produce
+  correct saves)
+- **AC2:** Post-optimization eval shows capture rate > baseline (at least +1
+  case)
+- **AC3:** `pensieve inject` with `nudge_every=5` produces no nudge on calls 1-4
+  and produces the nudge line on call 5
+- **AC4:** `pensieve inject` nudge fires again at call 10 (periodic, not
+  one-time)
+- **AC5:** Deleting `$TMPDIR/pensieve-inject-count` resets the counter (next
+  inject call = 1)
+- **AC6:** `nudge_every=0` disables nudging entirely
+- **AC7:** The updated canonical block in `pensieve-setup.md` passes
+  `npx prettier --check`
+- **AC8:** `cargo test` passes with the inject nudge changes
+- **AC9:** `cargo clippy -- -D warnings` passes
+
+## Out of Scope
 
 - No cron/scout/automated background capture
-- No sidecar agent (future direction, noted below)
-- No new memory types
-- No changes to retrieval logic
+- No sidecar agent (future direction)
+- No new memory types beyond existing 5
+- No changes to retrieval/recall logic
 - No `pensieve audit` command (future direction)
+- No changes to MCP server tools (nudge is CLI-only via hook)
+
+## Testing Strategy
+
+### Rust unit tests (Phase 3)
+
+- Test counter read/increment/write cycle
+- Test nudge appears at correct call counts (5, 10, 15)
+- Test nudge absent at non-trigger counts (1-4, 6-9)
+- Test `nudge_every=0` disables nudging
+- Test missing/corrupt counter file gracefully defaults to 1
+- Test nudge appended after normal inject output (not replacing it)
+
+### Eval-based tests (Phases 1-2)
+
+- Skill-creator evals with grading as described in Phase 1
+- Baseline and post-optimization runs compared via benchmark.json
+
+### Integration test (Phase 4)
+
+- Full SessionStart → inject cycle: verify counter resets, inject produces nudge
+  at expected call, canonical block passes prettier
+
+## Scope
+
+Files affected:
+
+| File                           | Change                                      |
+| ------------------------------ | ------------------------------------------- |
+| `src/ops/inject.rs`            | Add counter logic and nudge output          |
+| `src/types.rs`                 | Add `nudge_every` to `InjectConfig`         |
+| `src/config.rs`                | Expose `nudge_every` in configure command   |
+| `src/cli.rs`                   | Add `--nudge-every` to configure CLI        |
+| `.ai/skills/pensieve-setup.md` | Updated canonical block + SessionStart hook |
+| New: eval skill + evals.json   | Temporary, used during optimization         |
 
 ## Future Directions
 
@@ -145,22 +254,6 @@ Small addition to `pensieve inject`:
   distribution, revision rate, capture velocity, session coverage.
 - **PostToolUse hook** — capture after significant tool calls (file edits, bash
   commands), similar to claude-mem approach.
-
-## Scope
-
-Files affected:
-
-- `.ai/skills/pensieve-setup.md` — canonical Memory Protocol block
-- `src/ops/inject.rs` — add call counter and nudge logic
-- New skill file for eval harness (temporary, used during optimization)
-
-## Success Criteria
-
-- Eval harness produces reproducible baseline metrics
-- Optimized protocol text shows measurable improvement in evals
-- Inject nudge fires correctly after Nth call
-- After release and 1-week usage: decision + preference capture rate doubles
-  from baseline
 
 ## Metrics
 
