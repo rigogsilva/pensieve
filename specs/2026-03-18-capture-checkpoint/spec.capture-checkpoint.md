@@ -80,6 +80,53 @@ is transcript-based.
 - Optimized text shows improvement (>X/6 cases)
 - Canonical block updated and released
 
-## Implementation Notes
+## Implementation Notes — Eval Results (2026-03-18)
 
-_To be filled after implementation._
+### Round 1: With-skill vs without-skill (6 cases, Sonnet)
+
+**Problem:** Baseline was contaminated — without-skill agents inherited the
+Memory Protocol from `CLAUDE.md` and pensieve hooks in the repo environment.
+Both configs performed similarly.
+
+**With-skill results:** 6/6 correct (5 true positives, 1 true negative).
+
+### Round 2: Nudge A/B test (4 harder cases, Sonnet)
+
+Tested whether
+`[Pensieve: capture check — any decisions, preferences, or corrections worth saving?]`
+injected before the prompt changes behavior.
+
+| Eval | Scenario                  | No Nudge           | With Nudge         | Expected |
+| ---- | ------------------------- | ------------------ | ------------------ | -------- |
+| 1    | Stripe duplicate webhook  | ✓ Saved `gotcha`   | ✓ Saved `gotcha`   | Save     |
+| 2    | Error handling correction | ✓ Saved `pref`     | ✓ Saved `pref`     | Save     |
+| 3    | Routine --verbose impl    | ✗ False positive   | ✗ False positive   | No save  |
+| 4    | Market-based pricing      | ✓ Saved `decision` | ✓ Saved `decision` | Save     |
+
+**Key findings:**
+
+1. **No difference between nudge and no-nudge** — identical results on all 4
+   cases.
+2. **The protocol text alone is already effective** — 3/3 positive cases saved
+   correctly in both configs.
+3. **Eval 3 was a bad negative case** — implementing a feature IS arguably
+   noteworthy. Need more mundane cases (formatting, typo fixes).
+4. **The real-world problem is not the text** — agents follow the protocol when
+   they see it. The gap is that in long sessions, agents get deep into task work
+   and the protocol fades from active attention. A one-line nudge doesn't change
+   this because the agent already _knows_ to save; it just doesn't when busy.
+
+### Conclusion
+
+The inject nudge approach (text-based reminder) does not measurably improve
+capture behavior. The protocol text is already effective — the bottleneck is
+sustained attention over long sessions, not instruction quality.
+
+**Future directions to explore:**
+
+- **Hook-based automatic capture** (PostToolUse, PostCompact) — removes agent
+  discretion entirely
+- **Sidecar extraction agent** — reads conversation transcripts and extracts
+  memories in the background
+- **Sleep-time compute** (Letta pattern) — background agent processes sessions
+  during idle periods
