@@ -158,7 +158,9 @@ in your response.
 
 ### CLI usage for agents
 
-Use `--json` for input on commands that support it (`save`, `end-session`) — agents construct JSON naturally and it avoids shell quoting issues with backticks, newlines, and special characters:
+Use `--json` for input on commands that support it (`save`, `end-session`) —
+agents construct JSON naturally and it avoids shell quoting issues with
+backticks, newlines, and special characters:
 
 ```bash
 __PENSIEVE_BIN__ save --json '{"type":"decision","topic_key":"my-key","title":"My Title","project":"myproject","content":"..."}'
@@ -170,14 +172,16 @@ For very large content, `@file` is a fallback:
 __PENSIEVE_BIN__ save --json @/tmp/payload.json
 ```
 
-Use `--output json` on all commands — agents should always prefer structured output over human-readable text:
+Use `--output json` on all commands — agents should always prefer structured
+output over human-readable text:
 
 ```bash
 __PENSIEVE_BIN__ recall "query" --output json
 __PENSIEVE_BIN__ list --output json
 ```
 
-Run `__PENSIEVE_BIN__ schema <command>` to get the exact JSON field names and types. Never guess flag names — run `--help` if unsure.
+Run `__PENSIEVE_BIN__ schema <command>` to get the exact JSON field names and
+types. Never guess flag names — run `--help` if unsure.
 
 ### Tips
 
