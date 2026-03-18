@@ -72,7 +72,6 @@ pub fn run_inject(
         status: None,
         since: None,
         limit: max_results,
-        verbose: false,
     };
 
     let results = recall::recall(config, &index, &input)?;
