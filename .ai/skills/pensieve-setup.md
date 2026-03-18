@@ -163,6 +163,8 @@ agents construct JSON naturally and it avoids shell quoting issues with
 backticks, newlines, and special characters:
 
 ```bash
+# types: gotcha | decision | preference | how-it-works | discovery
+# project: scope to a repo/project, omit for global knowledge
 __PENSIEVE_BIN__ save --json '{"type":"decision","topic_key":"my-key","title":"My Title","project":"myproject","content":"..."}'
 ```
 
