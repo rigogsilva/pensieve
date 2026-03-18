@@ -156,11 +156,33 @@ Trigger when: user says goodbye/done/thanks, task is fully complete, or
 conversation reaches a stopping point. If `end_session` fails, say so explicitly
 in your response.
 
+### CLI usage for agents
+
+Use `--json` for input on commands that support it (`save`, `end-session`) — agents construct JSON naturally and it avoids shell quoting issues with backticks, newlines, and special characters:
+
+```bash
+__PENSIEVE_BIN__ save --json '{"type":"decision","topic_key":"my-key","title":"My Title","project":"myproject","content":"..."}'
+```
+
+For very large content, `@file` is a fallback:
+
+```bash
+__PENSIEVE_BIN__ save --json @/tmp/payload.json
+```
+
+Use `--output json` on all commands — agents should always prefer structured output over human-readable text:
+
+```bash
+__PENSIEVE_BIN__ recall "query" --output json
+__PENSIEVE_BIN__ list --output json
+```
+
+Run `__PENSIEVE_BIN__ schema <command>` to get the exact JSON field names and types. Never guess flag names — run `--help` if unsure.
+
 ### Tips
 
 - `topic_key` reuses update the memory (revision increments) — no duplicates
 - `dry_run` on save/delete/archive previews without writing
-- `--output json` (CLI) for structured processing
 - `project` scopes memories; omit for global knowledge
 <!-- pensieve:end -->
 
