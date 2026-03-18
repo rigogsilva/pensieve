@@ -120,6 +120,10 @@ pub enum Command {
         /// Max results
         #[arg(long, default_value = "20")]
         limit: usize,
+
+        /// Show scores and match details
+        #[arg(long)]
+        verbose: bool,
     },
     /// List all memories
     List {

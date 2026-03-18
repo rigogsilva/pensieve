@@ -22,6 +22,7 @@ pub struct RecallInput {
     pub status: Option<MemoryStatus>,
     pub since: Option<DateTime<Utc>>,
     pub limit: usize,
+    pub verbose: bool,
 }
 
 pub fn recall(
@@ -123,6 +124,18 @@ pub fn recall(
             .then_with(|| b.updated.cmp(&a.updated))
     });
     results.truncate(limit);
+
+    if input.verbose {
+        eprintln!("[recall] query={:?} results={}", input.query, results.len());
+        for r in &results {
+            eprintln!(
+                "  [{score:.4}] {key} ({memory_type:?})",
+                score = r.score.unwrap_or(0.0),
+                key = r.topic_key,
+                memory_type = r.memory_type,
+            );
+        }
+    }
 
     Ok(results)
 }

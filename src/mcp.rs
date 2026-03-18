@@ -253,6 +253,7 @@ impl PensieveServer {
             status,
             since,
             limit: params.limit,
+            verbose: false,
         };
 
         if let Some(idx) = open_index(&self.index_path) {

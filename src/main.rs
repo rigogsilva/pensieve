@@ -159,7 +159,7 @@ async fn main() {
             }
         }
 
-        Command::Recall { output, query, r#type, project, tags, status, since, limit } => {
+        Command::Recall { output, query, r#type, project, tags, status, since, limit, verbose } => {
             let format = output.as_ref().unwrap_or(&cli.output);
             let memory_type = r#type.map(|t| t.parse().expect("invalid memory type"));
             let status = status.map(|s| s.parse().expect("invalid status"));
@@ -180,6 +180,7 @@ async fn main() {
                 status,
                 since,
                 limit,
+                verbose,
             };
 
             match index::Index::open(&cfg.memory_dir) {
