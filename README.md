@@ -498,6 +498,10 @@ Once set up, this happens automatically every session:
    automatically — long sessions are never lost mid-way.
 5. **Session end** — agent calls `pensieve end-session --summary "..."` → next
    session picks up where this one left off
+6. **Nightly extraction** — catches memories agents missed during deep work.
+   Tell your agent "extract memories" or run `/nightly-extraction` to scan
+   recent session transcripts and save missed memories. See
+   [`.ai/skills/nightly-extraction/SKILL.md`](.ai/skills/nightly-extraction/SKILL.md).
 
 The agent never starts from zero again.
 
