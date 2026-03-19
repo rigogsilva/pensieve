@@ -579,12 +579,9 @@ encountered but didn't save.
 
 The v1 architecture (subagents save in parallel with project-scoped dedup)
 created ~15 duplicate memories per run. The v2 architecture (global recall +
-sequential save) caught 17 duplicates and correctly identified 8 updates to
-existing memories per run. A read-before-update step ensures updates only grow
-content — the orchestrator reads the full existing memory before saving, merging
-new detail into the existing content rather than overwriting it. In validation
-runs, every update increased content size (e.g., 380→885 chars) and none
-regressed.
+sequential save + read-before-update) caught 17 duplicates, correctly identified
+8 updates to existing memories, and never regressed existing content — updates
+only add detail, never overwrite.
 
 ### Running extraction
 
