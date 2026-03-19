@@ -52,19 +52,23 @@ python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list --since $(
 or a specific date like `--since 2026-03-15` to go further back. Sessions marked
 `[SKIP]` have too few turns or too little text to be worth analyzing.
 
-## Step 2 — Global recall (before launching subagents)
+## Step 2 — Full memory inventory (before launching subagents)
 
-Pull a broad snapshot of existing memories so subagents can dedup against the
-full store — not just their own project:
+Pull the complete inventory of existing memories so subagents can dedup against
+the full store — not just their own project:
 
 ```bash
-pensieve recall "recent memories" --limit 100 --output json
+pensieve list --output json
 ```
 
-This returns titles, topic_keys, previews, and projects for existing memories.
-Pass this list as context to every subagent in Step 3 (include it in the prompt).
-Cross-project visibility is what prevents the same knowledge from being saved
-under different keys in different projects.
+This returns every memory (title, topic_key, project, type, preview) without a
+query filter. Unlike `recall` (which returns relevance-ranked matches for a
+query), `list` returns the complete corpus — essential for dedup since you need
+to catch semantic overlaps regardless of how a memory was originally worded.
+
+Pass this full list as context to every subagent in Step 3 (include it in the
+prompt). Cross-project visibility is what prevents the same knowledge from being
+saved under different keys in different projects.
 
 ## Step 3 — Analyze sessions in parallel
 
