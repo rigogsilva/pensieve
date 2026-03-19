@@ -83,7 +83,7 @@ should:
 
 5. Recall existing memories for dedup and correction:
    ```bash
-   /Users/rigo/bin/pensieve recall "<project>" --project <project> --limit 30 --output json
+   pensieve recall "<project>" --project <project> --limit 30 --output json
    ```
    Compare candidates against existing memories:
    - **Duplicate**: candidate says the same thing as an existing memory → skip
@@ -95,7 +95,7 @@ should:
 
 6. For each new or updated memory, save with `source: "extraction"`:
    ```bash
-   /Users/rigo/bin/pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<content>","source":"extraction","confidence":"<high|medium>"}'
+   pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<content>","source":"extraction","confidence":"<high|medium>"}'
    ```
    Content: 2-5 sentences. Include the "why" and "how to apply". Use kebab-case
    for topic_key. If updating an existing memory, use its topic_key.

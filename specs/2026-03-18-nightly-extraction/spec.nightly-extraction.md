@@ -41,7 +41,7 @@ memories with deduplication against existing Pensieve memories.
   - How-it-works explanations that emerged from investigation
   - Multi-step conclusions after exploration
 - Project detection: infer the project name from the session path (e.g.,
-  `-Users-rigo-Documents-Projects-pensieve` → `pensieve`) or from session
+  `-Users-jane-Documents-Projects-pensieve` → `pensieve`) or from session
   metadata
 - Large sessions (>100KB of conversation text) should be chunked before sending
   to the API to stay within context limits

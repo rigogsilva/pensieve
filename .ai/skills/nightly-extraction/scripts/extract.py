@@ -100,7 +100,7 @@ def discover_codex_sessions(since: datetime) -> list[dict]:
 
 
 def infer_project_from_claude_path(encoded_path: str) -> str | None:
-    """e.g. '-Users-rigo-Documents-Projects-pensieve' -> 'pensieve'"""
+    """e.g. '-Users-jane-Documents-Projects-myapp' -> 'myapp'"""
     parts = encoded_path.strip("-").split("-")
     return parts[-1].lower() if parts else None
 
