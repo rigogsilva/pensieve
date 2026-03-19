@@ -52,9 +52,9 @@ save and with what confidence:
 python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list
 ```
 
-This shows sessions modified since the last extraction run. Use `--since
-YYYY-MM-DD` to look further back. Sessions marked `[SKIP]` have too few turns
-or too little text to be worth analyzing.
+This shows sessions modified since the last extraction run. Use
+`--since YYYY-MM-DD` to look further back. Sessions marked `[SKIP]` have too few
+turns or too little text to be worth analyzing.
 
 ## Step 2 — Process sessions in parallel
 
@@ -63,6 +63,7 @@ subagents in parallel (batch by project to share dedup context). Each subagent
 should:
 
 1. Parse the session transcript:
+
    ```bash
    python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --parse <path>
    ```
@@ -82,9 +83,11 @@ should:
    programming knowledge, session logistics.
 
 5. Recall existing memories for dedup and correction:
+
    ```bash
    pensieve recall "<project>" --project <project> --limit 30 --output json
    ```
+
    Compare candidates against existing memories:
    - **Duplicate**: candidate says the same thing as an existing memory → skip
    - **Additive**: candidate adds meaningful new detail → save with the same
@@ -94,9 +97,11 @@ should:
      corrected information
 
 6. For each new or updated memory, save with `source: "extraction"`:
+
    ```bash
    pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<content>","source":"extraction","confidence":"<high|medium>"}'
    ```
+
    Content: 2-5 sentences. Include the "why" and "how to apply". Use kebab-case
    for topic_key. If updating an existing memory, use its topic_key.
 
