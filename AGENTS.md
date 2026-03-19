@@ -90,7 +90,14 @@ Config at `~/.config/pensieve/config.toml`:
 See `.ai/skills/pensieve-memory-protocol.md` for full protocol. See
 `.ai/skills/pensieve-setup.md` for first-time setup. See
 `.ai/skills/pensieve-import.md` for importing existing memories. See
+`.ai/skills/nightly-extraction/SKILL.md` for session transcript extraction. See
 `.ai/mcp-configs/README.md` for per-agent MCP configuration.
+
+## README
+
+Keep `README.md` in sync with the code. When adding or changing features,
+commands, or skills, update the README to match. The README is the primary
+documentation for users.
 
 ## Specs
 
