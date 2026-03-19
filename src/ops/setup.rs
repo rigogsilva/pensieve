@@ -24,6 +24,14 @@ fn bin_path() -> String {
 fn unified_skill_content(bin: &str) -> String {
     include_str!("../../.ai/skills/pensieve-setup.md").replace("__PENSIEVE_BIN__", bin)
 }
+
+fn extraction_skill_content() -> &'static str {
+    include_str!("../../.ai/skills/nightly-extraction/SKILL.md")
+}
+
+fn extraction_script_content() -> &'static str {
+    include_str!("../../.ai/skills/nightly-extraction/scripts/extract.py")
+}
 fn detect_agents(filter: Option<&str>) -> Result<Vec<AgentInfo>> {
     let home = home_dir()?;
     let mut agents = Vec::new();
@@ -133,9 +141,24 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
             // Always write the latest skill content, but deduplicate by skills_dir
             // (Claude Code and Desktop share ~/.claude/skills/)
             if !written_skill_dirs.contains(&agent.skills_dir) {
+                // Install pensieve-setup skill
                 let skill_dir = agent.skills_dir.join("pensieve-setup");
                 std::fs::create_dir_all(&skill_dir)?;
                 std::fs::write(skill_dir.join("SKILL.md"), &skill_content)?;
+
+                // Install nightly-extraction skill
+                let extraction_dir = agent.skills_dir.join("nightly-extraction");
+                let scripts_dir = extraction_dir.join("scripts");
+                std::fs::create_dir_all(&scripts_dir)?;
+                std::fs::write(extraction_dir.join("SKILL.md"), extraction_skill_content())?;
+                let script_path = scripts_dir.join("extract.py");
+                std::fs::write(&script_path, extraction_script_content())?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755))?;
+                }
+
                 written_skill_dirs.push(agent.skills_dir.clone());
             }
             println!(
