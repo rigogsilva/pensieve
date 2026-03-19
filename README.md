@@ -58,6 +58,13 @@ readable `.md` file you can browse in VS Code, Obsidian, or `cat`. The SQLite
 index is a rebuildable sidecar — delete it, run `pensieve reindex`, and you're
 back. Cloud sync via iCloud or Google Drive just works.
 
+**Nightly extraction closes the capture gap.** Real-time memory protocols work
+when agents pay attention, but during deep implementation work they forget to
+save. A/B testing showed nudge-based reminders have zero effect — the issue is
+attention, not instructions. Pensieve's extraction skill reads session
+transcripts after the fact and recovers missed memories, increasing capture by
+~14x in real-world usage (110 extracted vs 8/day organic).
+
 **Three tiers of access.** MCP for agents that support it, CLI for everything
 else, and raw file access as the universal fallback. No agent is locked out.
 
@@ -498,8 +505,107 @@ Once set up, this happens automatically every session:
    automatically — long sessions are never lost mid-way.
 5. **Session end** — agent calls `pensieve end-session --summary "..."` → next
    session picks up where this one left off
+6. **Nightly extraction** — catches memories agents missed during deep work.
+   Tell your agent "extract memories" or run `/nightly-extraction` to scan
+   recent session transcripts and save missed memories.
 
 The agent never starts from zero again.
+
+## Nightly extraction
+
+Agents know the Memory Protocol, but during deep implementation work they get
+absorbed and forget to save. This is the biggest gap in real-time memory capture
+— not instruction quality, but attention over time.
+
+We A/B tested text-based nudges (injecting `[Pensieve: capture check]` reminders
+via hooks) and found **zero effect** on capture behavior across 4 eval scenarios.
+The protocol text already produces correct behavior — the issue is that agents
+stop attending to it during long task sequences. Nudges don't fix attention.
+
+Nightly extraction closes this gap by processing session transcripts after the
+fact, independent of what agents noticed during work.
+
+### How it works
+
+The extraction skill (`/nightly-extraction`) uses a two-phase architecture:
+
+1. **Discover** — `extract.py --list --since <date>` finds Claude Code and Codex
+   session JSONL files, filters by minimum turn count and text volume.
+2. **Global recall** — pulls the full existing memory store so subagents can
+   detect duplicates across all projects, not just their own.
+3. **Parallel analysis** — subagents parse session transcripts and identify
+   memory-worthy moments. Each returns JSON candidates — subagents do not save
+   directly.
+4. **Sequential dedup & save** — the orchestrator collects all candidates,
+   deduplicates across subagents and existing memories by content (not just
+   topic_key), resolves contradictions, canonicalizes project scope, then saves
+   sequentially.
+
+The two-phase design (analyze parallel, save sequential) prevents the
+cross-project duplicate problem that occurs when subagents save independently
+with project-scoped visibility.
+
+### Signal reliability hierarchy
+
+Not all transcript signals are equally trustworthy:
+
+| Signal | Confidence | Example |
+| --- | --- | --- |
+| User corrections | High | "that's not how it works, check X instead" |
+| User-confirmed findings | High | Agent discovers, user validates ("yes exactly") |
+| Explicit decisions | High | "yes, do it that way" |
+| Agent conclusions with evidence | Medium | Query results shown, but user didn't confirm |
+| Agent assertions without evidence | Skip | Agent states fact without verifying |
+
+User corrections are the highest-signal source. Agent assertions without
+evidence are the most common source of false memories and are skipped entirely.
+
+### Impact
+
+On the author's real usage across 6 active projects:
+
+| Metric | Value |
+| --- | --- |
+| Organic capture rate (real-time protocol) | ~8 memories/day |
+| Extraction yield (first two runs) | 110 memories from 30 sessions |
+| Duplicate detection (v2 architecture) | 17 caught per run vs 0 before |
+| Update detection (v2 architecture) | 8 per run vs 0 before |
+| Total active memories after extraction | 214 (from 83 pre-extraction) |
+
+Before extraction, 83 memories accumulated over 4 days of active work (~60
+migrated from a prior system, ~24 captured organically). Two extraction runs
+added 110 new memories from the same session transcripts — knowledge that agents
+encountered but didn't save.
+
+The v1 architecture (subagents save in parallel with project-scoped dedup)
+created ~15 duplicate memories per run. The v2 architecture (global recall +
+sequential save + read-before-update) caught 17 duplicates, correctly identified
+8 updates to existing memories, and never regressed existing content — updates
+only add detail, never overwrite.
+
+### Running extraction
+
+```bash
+# Via skill (in any AI agent session)
+/nightly-extraction
+
+# Or tell your agent
+"extract memories from today's sessions"
+
+# Manual session discovery (no AI analysis)
+python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list --since 2026-03-18
+```
+
+Extraction uses Claude Sonnet for analysis — cost is ~$0.30–0.50 per run at
+typical daily session volumes (10–30 sessions). Schedule it however you like —
+cron, launchd, or a
+[Claude Code Cowork](https://docs.anthropic.com/en/docs/claude-code/cowork)
+scheduled task are all good options. The skill is idempotent: running it twice on
+the same sessions produces duplicates that get caught by the dedup pass.
+
+See
+[`.ai/skills/nightly-extraction/SKILL.md`](.ai/skills/nightly-extraction/SKILL.md)
+for the full skill definition.
 
 ## Auto-inject
 

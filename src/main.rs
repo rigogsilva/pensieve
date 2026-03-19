@@ -151,7 +151,12 @@ async fn main() {
         Command::Read { output, topic_key, project } => {
             let format = output.as_ref().unwrap_or(&cli.output);
             match ops::read::read_memory(&cfg, &topic_key, project.as_deref()) {
-                Ok(memory) => output_result(format, &memory),
+                Ok(memory) => {
+                    // Wrap in MemoryWithContent so content is included in JSON output
+                    // (Memory has #[serde(skip)] on content for other commands)
+                    let with_content = pensieve::types::MemoryWithContent::from(memory);
+                    output_result(format, &with_content);
+                }
                 Err(e) => {
                     eprintln!("Error: {e}");
                     std::process::exit(1);
