@@ -141,10 +141,22 @@ most broadly — typically `camber-ops` for CI/infra, the specific product repo
 for product-specific knowledge. A memory should live in exactly one project. If
 a finding applies to multiple products equally, pick the infra/platform repo.
 
+**Read before update:** For any candidate with action `update` or `contradiction`,
+read the existing memory's full content first:
+
+```bash
+pensieve read --topic-key <key> --project <project> --output json
+```
+
+Compare the full existing content against the candidate. Only save if the
+candidate genuinely adds new information or corrects something wrong. Merge the
+existing content with the new detail — never overwrite richer content with a
+thinner version.
+
 **Save sequentially** with `source: "extraction"`:
 
 ```bash
-pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<content>","source":"extraction","confidence":"<high|medium>"}'
+pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<merged content>","source":"extraction","confidence":"<high|medium>"}'
 ```
 
 ## Step 5 — Report
