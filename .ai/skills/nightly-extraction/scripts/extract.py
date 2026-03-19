@@ -193,7 +193,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Discover and parse agent session transcripts for memory extraction"
     )
-    parser.add_argument("--since", type=str, help="Lookback start (YYYY-MM-DD or ISO datetime). Defaults to last 24 hours.")
+    parser.add_argument("--since", type=str, required=True, help="Lookback start (YYYY-MM-DD or ISO datetime)")
     parser.add_argument("--limit", type=int, help="Process at most N sessions")
     parser.add_argument("--list", action="store_true", help="List sessions without parsing")
     parser.add_argument("--parse", type=str, help="Parse a single session file and output transcript")
@@ -223,16 +223,13 @@ def main():
         return
 
     # Determine since timestamp
-    if args.since:
-        try:
-            since = datetime.fromisoformat(args.since)
-            if since.tzinfo is None:
-                since = since.replace(tzinfo=timezone.utc)
-        except ValueError:
-            print(f"Error: Invalid --since format: {args.since}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        since = datetime.now(timezone.utc) - timedelta(hours=DEFAULT_LOOKBACK_HOURS)
+    try:
+        since = datetime.fromisoformat(args.since)
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+    except ValueError:
+        print(f"Error: Invalid --since format: {args.since}", file=sys.stderr)
+        sys.exit(1)
 
     # Discover sessions
     sessions = discover_claude_sessions(since) + discover_codex_sessions(since)
