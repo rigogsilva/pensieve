@@ -52,9 +52,9 @@ save and with what confidence:
 python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list
 ```
 
-This shows sessions modified since the last extraction run. Use
-`--since YYYY-MM-DD` to look further back. Sessions marked `[SKIP]` have too few
-turns or too little text to be worth analyzing.
+This shows sessions from the last 24 hours by default. Use `--since YYYY-MM-DD`
+to look further back. Sessions marked `[SKIP]` have too few turns or too little
+text to be worth analyzing.
 
 ## Step 2 — Process sessions in parallel
 
@@ -107,15 +107,7 @@ should:
 
 7. Return a summary of what was saved (or "no new memories found").
 
-## Step 3 — Update watermark
-
-After all subagents complete:
-
-```bash
-python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --update-watermark
-```
-
-## Step 4 — Report
+## Step 3 — Report
 
 Summarize the extraction run:
 

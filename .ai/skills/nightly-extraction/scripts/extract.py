@@ -12,16 +12,14 @@ the analysis and saves memories via pensieve CLI.
 
 import argparse
 import json
-import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
-WATERMARK_PATH = Path.home() / ".pensieve" / "extraction_watermark"
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 CODEX_SESSIONS_DIR = Path.home() / ".codex" / "sessions"
 
@@ -30,28 +28,8 @@ MIN_USER_TURNS = 5
 # Skip sessions with less than this much conversation text (bytes)
 MIN_TEXT_BYTES = 5000
 
-
-# ---------------------------------------------------------------------------
-# Watermark
-# ---------------------------------------------------------------------------
-
-
-def read_watermark() -> datetime:
-    """Read the last extraction timestamp. Returns epoch if no watermark."""
-    if WATERMARK_PATH.exists():
-        text = WATERMARK_PATH.read_text().strip()
-        try:
-            return datetime.fromisoformat(text)
-        except ValueError:
-            pass
-    # Default to last 24 hours if no watermark exists
-    return datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=24)
-
-
-def write_watermark(ts: datetime) -> None:
-    """Write the current timestamp as the watermark."""
-    WATERMARK_PATH.parent.mkdir(parents=True, exist_ok=True)
-    WATERMARK_PATH.write_text(ts.isoformat())
+# Default lookback when --since is not provided
+DEFAULT_LOOKBACK_HOURS = 24
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +38,7 @@ def write_watermark(ts: datetime) -> None:
 
 
 def discover_claude_sessions(since: datetime) -> list[dict]:
-    """Find Claude Code session JSONL files modified since the watermark."""
+    """Find Claude Code session JSONL files modified since the given time."""
     sessions = []
     if not CLAUDE_PROJECTS_DIR.exists():
         return sessions
@@ -82,7 +60,7 @@ def discover_claude_sessions(since: datetime) -> list[dict]:
 
 
 def discover_codex_sessions(since: datetime) -> list[dict]:
-    """Find Codex CLI session JSONL files modified since the watermark."""
+    """Find Codex CLI session JSONL files modified since the given time."""
     sessions = []
     if not CODEX_SESSIONS_DIR.exists():
         return sessions
@@ -215,11 +193,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Discover and parse agent session transcripts for memory extraction"
     )
-    parser.add_argument("--since", type=str, help="Override watermark (YYYY-MM-DD or ISO datetime)")
+    parser.add_argument("--since", type=str, help="Lookback start (YYYY-MM-DD or ISO datetime). Defaults to last 24 hours.")
     parser.add_argument("--limit", type=int, help="Process at most N sessions")
     parser.add_argument("--list", action="store_true", help="List sessions without parsing")
     parser.add_argument("--parse", type=str, help="Parse a single session file and output transcript")
-    parser.add_argument("--update-watermark", action="store_true", help="Update watermark to now")
     args = parser.parse_args()
 
     # Single file parse mode
@@ -245,12 +222,6 @@ def main():
             print(f"Project (from session): {result['project_override']}", file=sys.stderr)
         return
 
-    # Update watermark mode
-    if args.update_watermark:
-        write_watermark(datetime.now(timezone.utc))
-        print(f"Watermark updated to: {datetime.now(timezone.utc).isoformat()}")
-        return
-
     # Determine since timestamp
     if args.since:
         try:
@@ -261,7 +232,7 @@ def main():
             print(f"Error: Invalid --since format: {args.since}", file=sys.stderr)
             sys.exit(1)
     else:
-        since = read_watermark()
+        since = datetime.now(timezone.utc) - timedelta(hours=DEFAULT_LOOKBACK_HOURS)
 
     # Discover sessions
     sessions = discover_claude_sessions(since) + discover_codex_sessions(since)
@@ -282,7 +253,7 @@ def main():
             skip = user_turns < MIN_USER_TURNS or total_bytes < MIN_TEXT_BYTES
             status = "SKIP" if skip else "OK"
             print(f"[{status}] {s['source']:12s} | {project:20s} | {user_turns:3d} turns | {total_bytes:7d} bytes | {s['path']}")
-        print(f"\nTotal: {len(sessions)} sessions, {sum(1 for s in sessions if True)} since {since.isoformat()}")
+        print(f"\nTotal: {len(sessions)} sessions since {since.isoformat()}")
         return
 
     # Default: output JSON summary of all sessions for Claude to process
