@@ -162,9 +162,15 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
                 written_skill_dirs.push(agent.skills_dir.clone());
             }
             println!(
-                "  \u{2713} {} \u{2014} skill available at {}/pensieve-setup/",
+                "  \u{2713} {} \u{2014} skills installed at {}/",
                 agent.display_name,
                 agent.skills_dir.display()
+            );
+            println!(
+                "      \u{2022} pensieve-setup (Memory Protocol)"
+            );
+            println!(
+                "      \u{2022} nightly-extraction (session transcript mining)"
             );
             any_installed = true;
         } else {
