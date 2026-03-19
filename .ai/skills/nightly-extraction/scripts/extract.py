@@ -44,7 +44,8 @@ def read_watermark() -> datetime:
             return datetime.fromisoformat(text)
         except ValueError:
             pass
-    return datetime(2000, 1, 1, tzinfo=timezone.utc)
+    # Default to last 24 hours if no watermark exists
+    return datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=24)
 
 
 def write_watermark(ts: datetime) -> None:
