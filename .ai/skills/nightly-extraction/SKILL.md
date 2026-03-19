@@ -27,24 +27,20 @@ Not all signals in a transcript are equally trustworthy. When deciding what to
 save and with what confidence:
 
 1. **User corrections** (highest signal) — "that's not how it works", "no, check
-   X instead", "we don't use that anymore". These are confirmed facts from the
-   person who knows. Always save, always `confidence: "high"`.
+   X instead", "we don't use that anymore". Always `confidence: "high"`.
 
 2. **User-confirmed findings** — agent discovers something, user validates it
-   ("yes exactly", "right", proceeds without pushback). Save with
+   ("yes exactly", "right", proceeds without pushback). `confidence: "high"`.
+
+3. **Explicit decisions** — "yes, do it that way", "let's go with X".
    `confidence: "high"`.
 
-3. **Explicit decisions** — "yes, do it that way", "let's go with X". The user
-   made a choice. Save with `confidence: "high"`.
-
-4. **Agent conclusions after investigation** — the agent explored, queried data,
-   and reached a conclusion, but the user didn't explicitly confirm or deny it.
-   These can be plausible but wrong. Save only if the evidence in the transcript
-   is strong (e.g., query results shown). Use `confidence: "medium"`.
+4. **Agent conclusions after investigation** — the agent explored and reached a
+   conclusion, but the user didn't explicitly confirm. Save only if evidence is
+   strong (e.g., query results shown). `confidence: "medium"`.
 
 5. **Agent assertions without evidence** (lowest signal) — the agent states
-   something as fact during the flow of work without querying or verifying.
-   **Skip these entirely.** They are the most common source of false memories.
+   something as fact without verifying. **Skip these entirely.**
 
 ## Step 1 — Discover sessions
 
@@ -56,11 +52,24 @@ python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list --since $(
 or a specific date like `--since 2026-03-15` to go further back. Sessions marked
 `[SKIP]` have too few turns or too little text to be worth analyzing.
 
-## Step 2 — Process sessions in parallel
+## Step 2 — Global recall (before launching subagents)
 
-For each `[OK]` session, spawn a subagent to analyze it. Launch multiple
-subagents in parallel (batch by project to share dedup context). Each subagent
-should:
+Pull a broad snapshot of existing memories so subagents can dedup against the
+full store — not just their own project:
+
+```bash
+pensieve recall "recent memories" --limit 100 --output json
+```
+
+This returns titles, topic_keys, previews, and projects for existing memories.
+Pass this list as context to every subagent in Step 3 (include it in the prompt).
+Cross-project visibility is what prevents the same knowledge from being saved
+under different keys in different projects.
+
+## Step 3 — Analyze sessions in parallel
+
+For each `[OK]` session, spawn a subagent to analyze it. Group by project to
+share context. Each subagent should:
 
 1. Parse the session transcript:
 
@@ -68,57 +77,87 @@ should:
    python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --parse <path>
    ```
 
-2. Read the transcript and identify memory-worthy moments using these types:
+2. Identify memory-worthy moments using these types:
    - **gotcha**: Bug causes, surprising behavior, "watch out for this"
    - **decision**: Architecture or design choices with rationale
    - **preference**: User corrections or stated preferences
    - **how-it-works**: Explanations that emerged from investigation
    - **discovery**: Findings or insights valuable in future sessions
 
-3. Apply the signal reliability hierarchy above. Prioritize user corrections and
-   confirmed findings. Skip unverified agent assertions — extraction that saves
-   wrong information is worse than saving nothing.
+3. Apply the signal reliability hierarchy. Skip unverified agent assertions.
 
 4. Skip: ephemeral task details, things obvious from code/git, generic
    programming knowledge, session logistics.
 
-5. Recall existing memories for dedup and correction:
+5. Compare each candidate against the global recall list (provided in prompt).
+   Check **by content, not just topic_key** — two memories with different keys
+   can cover the same knowledge. For each candidate, classify as:
+   - **New**: no existing memory covers this → include with a new topic_key
+   - **Update**: adds meaningful detail to an existing memory → include with
+     the **existing memory's topic_key and project** so it updates in place
+   - **Duplicate**: existing memory already covers this → drop
+   - **Contradicts**: transcript evidence (especially user correction) shows an
+     existing memory is wrong → include with the existing memory's topic_key,
+     mark `action: "contradiction"` and include the existing memory's title
 
-   ```bash
-   pensieve recall "<project>" --project <project> --limit 30 --output json
+6. **Do NOT save memories.** Return candidates as a JSON array:
+
+   ```json
+   [
+     {
+       "action": "create|update|contradiction",
+       "type": "gotcha|decision|preference|how-it-works|discovery",
+       "topic_key": "kebab-case-key",
+       "title": "Short descriptive title",
+       "project": "project-name",
+       "content": "2-5 sentences. Include why and how to apply.",
+       "confidence": "high|medium",
+       "existing_key": "topic_key of memory being updated/contradicted (if any)",
+       "existing_project": "project of that existing memory (if any)"
+     }
+   ]
    ```
 
-   Compare candidates against existing memories **by content, not just by
-   topic_key**. Two memories with different keys can cover the same knowledge.
-   Read the titles and previews carefully:
-   - **Duplicate**: candidate covers the same knowledge as an existing memory,
-     even if the topic_key is different → skip
-   - **Additive**: candidate adds meaningful new detail to an existing memory →
-     save with the **existing memory's topic_key** to update it (not a new key)
-   - **Contradicts**: transcript shows an existing memory is wrong (especially
-     via user correction) → save with the **existing memory's topic_key** to
-     overwrite with corrected information
+## Step 4 — Deduplicate and save (sequential)
 
-6. For each new or updated memory, save with `source: "extraction"`:
+Collect all candidates from all subagents. Before saving, the orchestrator must
+deduplicate and resolve conflicts across the full candidate set:
 
-   ```bash
-   pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<content>","source":"extraction","confidence":"<high|medium>"}'
-   ```
+**Dedup across subagents:** Multiple subagents may produce candidates covering
+the same knowledge (e.g., a CI pattern discussed in two sessions). Group
+candidates by semantic similarity — same topic, same conclusion. Keep only the
+richest version.
 
-   Content: 2-5 sentences. Include the "why" and "how to apply". Use kebab-case
-   for topic_key. If updating an existing memory, use its topic_key.
+**Resolve contradictions:** When a candidate contradicts an existing memory:
+1. Prefer user corrections over agent conclusions (user is authoritative)
+2. Prefer more recent evidence over older
+3. If both are partially right, merge into one memory covering both aspects
+4. Only flag for human review if truly irreconcilable (e.g., two user
+   corrections that conflict with each other)
 
-7. Return a summary of what was saved (or "no new memories found").
+**Canonicalize project scope:** Memories about cross-cutting concerns (CI
+patterns, shared tooling, workflow conventions) belong in the repo they apply to
+most broadly — typically `camber-ops` for CI/infra, the specific product repo
+for product-specific knowledge. A memory should live in exactly one project. If
+a finding applies to multiple products equally, pick the infra/platform repo.
 
-## Step 3 — Report
+**Save sequentially** with `source: "extraction"`:
+
+```bash
+pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<content>","source":"extraction","confidence":"<high|medium>"}'
+```
+
+## Step 5 — Report
 
 Summarize the extraction run:
 
 ```
 Sessions processed: X (of Y found)
-Memories created: N (H high-confidence, M medium-confidence)
+Memories created: N (H high, M medium)
 Memories updated: U
-No new memories: Z sessions
+Contradictions resolved: C
+Duplicates dropped: D
+Flagged for review: F
 
 New:
   [type] topic-key — "title" (project) [confidence]
