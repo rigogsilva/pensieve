@@ -822,9 +822,10 @@ fn test_project_scoping() {
     let read = pensieve::ops::read::read_memory(&config, "project-mem", Some("myproject")).unwrap();
     assert_eq!(read.title, "Project Memory");
 
-    // Read without project should fail
-    let result = pensieve::ops::read::read_memory(&config, "project-mem", None);
-    assert!(result.is_err());
+    // Read without project should find the project-scoped memory
+    let read_no_proj = pensieve::ops::read::read_memory(&config, "project-mem", None).unwrap();
+    assert_eq!(read_no_proj.title, "Project Memory");
+    assert_eq!(read_no_proj.project.as_deref(), Some("myproject"));
 
     // List with project filter
     let list = pensieve::ops::list::list_memories(&config, Some("myproject"), None, None).unwrap();
