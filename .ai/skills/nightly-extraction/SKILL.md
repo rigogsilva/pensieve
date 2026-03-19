@@ -88,13 +88,16 @@ should:
    pensieve recall "<project>" --project <project> --limit 30 --output json
    ```
 
-   Compare candidates against existing memories:
-   - **Duplicate**: candidate says the same thing as an existing memory → skip
-   - **Additive**: candidate adds meaningful new detail → save with the same
-     `topic_key` to update (revision increments)
+   Compare candidates against existing memories **by content, not just by
+   topic_key**. Two memories with different keys can cover the same knowledge.
+   Read the titles and previews carefully:
+   - **Duplicate**: candidate covers the same knowledge as an existing memory,
+     even if the topic_key is different → skip
+   - **Additive**: candidate adds meaningful new detail to an existing memory →
+     save with the **existing memory's topic_key** to update it (not a new key)
    - **Contradicts**: transcript shows an existing memory is wrong (especially
-     via user correction) → save with the same `topic_key` to overwrite with
-     corrected information
+     via user correction) → save with the **existing memory's topic_key** to
+     overwrite with corrected information
 
 6. For each new or updated memory, save with `source: "extraction"`:
 
