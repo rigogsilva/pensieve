@@ -108,6 +108,52 @@ fn default_scope() -> String {
     "global".to_string()
 }
 
+/// Wrapper that includes content in serialized output (for `read` command).
+#[derive(Debug, Serialize)]
+pub struct MemoryWithContent {
+    pub title: String,
+    #[serde(rename = "type")]
+    pub memory_type: MemoryType,
+    pub topic_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+    pub scope: String,
+    pub status: MemoryStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<Confidence>,
+    pub revision: u32,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub superseded_by: Option<String>,
+    pub created: DateTime<Utc>,
+    pub updated: DateTime<Utc>,
+    pub content: String,
+}
+
+impl From<Memory> for MemoryWithContent {
+    fn from(m: Memory) -> Self {
+        Self {
+            title: m.title,
+            memory_type: m.memory_type,
+            topic_key: m.topic_key,
+            project: m.project,
+            scope: m.scope,
+            status: m.status,
+            confidence: m.confidence,
+            revision: m.revision,
+            tags: m.tags,
+            source: m.source,
+            superseded_by: m.superseded_by,
+            created: m.created,
+            updated: m.updated,
+            content: m.content,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_field_names)]
 pub struct MemoryCompact {
