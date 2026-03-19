@@ -49,12 +49,12 @@ save and with what confidence:
 ## Step 1 — Discover sessions
 
 ```bash
-python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list --since YYYY-MM-DD
+python3 ~/.claude/skills/nightly-extraction/scripts/extract.py --list --since $(date -v-1d +%Y-%m-%d)
 ```
 
-`--since` is required — use today's date for the last day, or go further back.
-Sessions marked `[SKIP]` have too few turns or too little text to be worth
-analyzing.
+`--since` is required. Use `$(date -v-1d +%Y-%m-%d)` for yesterday (last 24h),
+or a specific date like `--since 2026-03-15` to go further back. Sessions marked
+`[SKIP]` have too few turns or too little text to be worth analyzing.
 
 ## Step 2 — Process sessions in parallel
 
