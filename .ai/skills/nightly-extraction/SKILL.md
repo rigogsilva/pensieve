@@ -100,9 +100,14 @@ share context. Each subagent should:
    - **Update**: adds meaningful detail to an existing memory → include with
      the **existing memory's topic_key and project** so it updates in place
    - **Duplicate**: existing memory already covers this → drop
-   - **Contradicts**: transcript evidence (especially user correction) shows an
-     existing memory is wrong → include with the existing memory's topic_key,
-     mark `action: "contradiction"` and include the existing memory's title
+   - **Contradicts**: transcript evidence shows an existing memory is wrong →
+     include with the existing memory's topic_key, mark
+     `action: "contradiction"` and include the existing memory's title.
+     **Guard:** only classify as contradiction if the evidence is a user
+     correction (tier 1) or user-confirmed finding (tier 2). Agent conclusions
+     alone (tier 4) must NOT override existing memories — especially `decision`
+     type memories which reflect deliberate choices. If an agent concludes
+     something that conflicts with a decision, drop it.
 
 6. **Do NOT save memories.** Return candidates as a JSON array:
 
@@ -133,10 +138,16 @@ candidates by semantic similarity — same topic, same conclusion. Keep only the
 richest version.
 
 **Resolve contradictions:** When a candidate contradicts an existing memory:
-1. Prefer user corrections over agent conclusions (user is authoritative)
-2. Prefer more recent evidence over older
-3. If both are partially right, merge into one memory covering both aspects
-4. Only flag for human review if truly irreconcilable (e.g., two user
+1. **Never override a `decision` with agent reasoning.** Decision memories
+   reflect deliberate architecture choices. Even if the agent's technical
+   conclusion seems correct (e.g., "these IDs are globally unique so we don't
+   need the prefix"), the decision to include the prefix may be intentional for
+   safety, consistency, or future-proofing. Only a user correction (signal tier
+   1) can override a decision — not an agent conclusion (tier 4).
+2. Prefer user corrections over agent conclusions (user is authoritative)
+3. Prefer more recent evidence over older
+4. If both are partially right, merge into one memory covering both aspects
+5. Only flag for human review if truly irreconcilable (e.g., two user
    corrections that conflict with each other)
 
 **Canonicalize project scope:** Memories about cross-cutting concerns (CI
