@@ -170,11 +170,10 @@ async fn main() {
             let status = status.map(|s| s.parse().expect("invalid status"));
             let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
             let since = since.map(|s| {
-                chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")
-                    .expect("invalid date, use YYYY-MM-DD")
-                    .and_hms_opt(0, 0, 0)
-                    .expect("invalid time")
-                    .and_utc()
+                pensieve::date_utils::parse_since_date(&s).unwrap_or_else(|e| {
+                    eprintln!("Error: {e}");
+                    std::process::exit(1);
+                })
             });
 
             let input = ops::recall::RecallInput {
@@ -202,16 +201,23 @@ async fn main() {
             }
         }
 
-        Command::List { output, project, r#type, status } => {
+        Command::List { output, project, r#type, status, since } => {
             let format = output.as_ref().unwrap_or(&cli.output);
             let memory_type = r#type.map(|t| t.parse().expect("invalid memory type"));
             let status = status.map(|s| s.parse().expect("invalid status"));
+            let since = since.map(|s| {
+                pensieve::date_utils::parse_since_date(&s).unwrap_or_else(|e| {
+                    eprintln!("Error: {e}");
+                    std::process::exit(1);
+                })
+            });
 
             match ops::list::list_memories(
                 &cfg,
                 project.as_deref(),
                 memory_type.as_ref(),
                 status.as_ref(),
+                since.as_ref(),
             ) {
                 Ok(memories) => output_result(format, &memories),
                 Err(e) => {

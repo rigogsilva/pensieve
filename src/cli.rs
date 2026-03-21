@@ -138,6 +138,10 @@ pub enum Command {
         /// Filter by status
         #[arg(long)]
         status: Option<String>,
+
+        /// Only memories updated after this date (YYYY-MM-DD, yesterday, today)
+        #[arg(long)]
+        since: Option<String>,
     },
     /// Delete a memory
     Delete {

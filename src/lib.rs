@@ -1,6 +1,7 @@
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
 
 pub mod config;
+pub mod date_utils;
 pub mod embedder;
 pub mod error;
 pub mod index;
