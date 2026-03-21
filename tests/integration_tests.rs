@@ -829,7 +829,8 @@ fn test_project_scoping() {
     assert_eq!(read_no_proj.project.as_deref(), Some("myproject"));
 
     // List with project filter
-    let list = pensieve::ops::list::list_memories(&config, Some("myproject"), None, None, None).unwrap();
+    let list =
+        pensieve::ops::list::list_memories(&config, Some("myproject"), None, None, None).unwrap();
     assert_eq!(list.len(), 1);
 }
 
