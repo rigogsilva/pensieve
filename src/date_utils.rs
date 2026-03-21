@@ -16,10 +16,7 @@ pub fn parse_since_date(input: &str) -> Result<DateTime<Utc>, String> {
         return Ok(today.and_hms_opt(0, 0, 0).unwrap().and_utc());
     }
     if input.eq_ignore_ascii_case("yesterday") {
-        let yesterday = Utc::now()
-            .date_naive()
-            .pred_opt()
-            .unwrap_or(Utc::now().date_naive());
+        let yesterday = Utc::now().date_naive().pred_opt().unwrap_or(Utc::now().date_naive());
         return Ok(yesterday.and_hms_opt(0, 0, 0).unwrap().and_utc());
     }
 

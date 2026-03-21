@@ -240,9 +240,7 @@ impl PensieveServer {
         let params = params.0;
         let memory_type = params.r#type.and_then(|t| t.parse().ok());
         let status = params.status.and_then(|s| s.parse().ok());
-        let since = params
-            .since
-            .and_then(|s| crate::date_utils::parse_since_date(&s).ok());
+        let since = params.since.and_then(|s| crate::date_utils::parse_since_date(&s).ok());
 
         let input = ops::recall::RecallInput {
             query: params.query,
@@ -314,9 +312,7 @@ impl PensieveServer {
         let params = params.0;
         let memory_type = params.r#type.and_then(|t| t.parse().ok());
         let status = params.status.and_then(|s| s.parse().ok());
-        let since = params
-            .since
-            .and_then(|s| crate::date_utils::parse_since_date(&s).ok());
+        let since = params.since.and_then(|s| crate::date_utils::parse_since_date(&s).ok());
 
         match ops::list::list_memories(
             &self.config,

@@ -166,12 +166,8 @@ pub fn run_setup(agent_filter: Option<&str>) -> Result<()> {
                 agent.display_name,
                 agent.skills_dir.display()
             );
-            println!(
-                "      \u{2022} pensieve-setup (Memory Protocol)"
-            );
-            println!(
-                "      \u{2022} nightly-extraction (session transcript mining)"
-            );
+            println!("      \u{2022} pensieve-setup (Memory Protocol)");
+            println!("      \u{2022} nightly-extraction (session transcript mining)");
             any_installed = true;
         } else {
             println!("  \u{2717} {} \u{2014} not detected", agent.display_name);
