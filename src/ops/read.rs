@@ -27,8 +27,7 @@ pub fn read_memory(
             for entry in entries.filter_map(std::result::Result::ok) {
                 if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
                     if let Some(proj_name) = entry.file_name().to_str() {
-                        if let Ok(memory) =
-                            storage::read_memory(config, topic_key, Some(proj_name))
+                        if let Ok(memory) = storage::read_memory(config, topic_key, Some(proj_name))
                         {
                             matches.push(memory);
                         }
@@ -42,10 +41,7 @@ pub fn read_memory(
         0 => Err(PensieveError::NotFound(format!("memory not found: {topic_key}"))),
         1 => Ok(matches.into_iter().next().unwrap()),
         _ => {
-            let projects: Vec<String> = matches
-                .iter()
-                .filter_map(|m| m.project.clone())
-                .collect();
+            let projects: Vec<String> = matches.iter().filter_map(|m| m.project.clone()).collect();
             Err(PensieveError::InvalidInput(format!(
                 "multiple matches found for '{topic_key}' in projects: {}. Specify --project to disambiguate.",
                 projects.join(", ")

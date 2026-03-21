@@ -97,8 +97,8 @@ share context. Each subagent should:
    Check **by content, not just topic_key** — two memories with different keys
    can cover the same knowledge. For each candidate, classify as:
    - **New**: no existing memory covers this → include with a new topic_key
-   - **Update**: adds meaningful detail to an existing memory → include with
-     the **existing memory's topic_key and project** so it updates in place
+   - **Update**: adds meaningful detail to an existing memory → include with the
+     **existing memory's topic_key and project** so it updates in place
    - **Duplicate**: existing memory already covers this → drop
    - **Contradicts**: transcript evidence shows an existing memory is wrong →
      include with the existing memory's topic_key, mark
@@ -138,12 +138,13 @@ candidates by semantic similarity — same topic, same conclusion. Keep only the
 richest version.
 
 **Resolve contradictions:** When a candidate contradicts an existing memory:
+
 1. **Never override a `decision` with agent reasoning.** Decision memories
    reflect deliberate architecture choices. Even if the agent's technical
    conclusion seems correct (e.g., "these IDs are globally unique so we don't
    need the prefix"), the decision to include the prefix may be intentional for
    safety, consistency, or future-proofing. Only a user correction (signal tier
-   1) can override a decision — not an agent conclusion (tier 4).
+   1. can override a decision — not an agent conclusion (tier 4).
 2. Prefer user corrections over agent conclusions (user is authoritative)
 3. Prefer more recent evidence over older
 4. If both are partially right, merge into one memory covering both aspects
@@ -156,8 +157,8 @@ most broadly — typically `camber-ops` for CI/infra, the specific product repo
 for product-specific knowledge. A memory should live in exactly one project. If
 a finding applies to multiple products equally, pick the infra/platform repo.
 
-**Read before update:** For any candidate with action `update` or `contradiction`,
-read the existing memory's full content first:
+**Read before update:** For any candidate with action `update` or
+`contradiction`, read the existing memory's full content first:
 
 ```bash
 pensieve read --topic-key <key> --project <project> --output json

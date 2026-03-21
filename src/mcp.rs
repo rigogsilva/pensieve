@@ -96,6 +96,8 @@ pub struct ListMemoriesParams {
     pub r#type: Option<String>,
     /// Filter by status
     pub status: Option<String>,
+    /// Only memories updated after this ISO date (YYYY-MM-DD, yesterday, today)
+    pub since: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
@@ -238,12 +240,7 @@ impl PensieveServer {
         let params = params.0;
         let memory_type = params.r#type.and_then(|t| t.parse().ok());
         let status = params.status.and_then(|s| s.parse().ok());
-        let since = params.since.and_then(|s| {
-            chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")
-                .ok()
-                .and_then(|d| d.and_hms_opt(0, 0, 0))
-                .map(|dt| dt.and_utc())
-        });
+        let since = params.since.and_then(|s| crate::date_utils::parse_since_date(&s).ok());
 
         let input = ops::recall::RecallInput {
             query: params.query,
@@ -266,6 +263,7 @@ impl PensieveServer {
                 input.project.as_deref(),
                 input.memory_type.as_ref(),
                 input.status.as_ref(),
+                input.since.as_ref(),
             ) {
                 Ok(results) => json_result(&results),
                 Err(e) => format!("Error: {e}"),
@@ -314,12 +312,14 @@ impl PensieveServer {
         let params = params.0;
         let memory_type = params.r#type.and_then(|t| t.parse().ok());
         let status = params.status.and_then(|s| s.parse().ok());
+        let since = params.since.and_then(|s| crate::date_utils::parse_since_date(&s).ok());
 
         match ops::list::list_memories(
             &self.config,
             params.project.as_deref(),
             memory_type.as_ref(),
             status.as_ref(),
+            since.as_ref(),
         ) {
             Ok(results) => json_result(&results),
             Err(e) => format!("Error: {e}"),

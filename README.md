@@ -518,9 +518,10 @@ absorbed and forget to save. This is the biggest gap in real-time memory capture
 — not instruction quality, but attention over time.
 
 We A/B tested text-based nudges (injecting `[Pensieve: capture check]` reminders
-via hooks) and found **zero effect** on capture behavior across 4 eval scenarios.
-The protocol text already produces correct behavior — the issue is that agents
-stop attending to it during long task sequences. Nudges don't fix attention.
+via hooks) and found **zero effect** on capture behavior across 4 eval
+scenarios. The protocol text already produces correct behavior — the issue is
+that agents stop attending to it during long task sequences. Nudges don't fix
+attention.
 
 Nightly extraction closes this gap by processing session transcripts after the
 fact, independent of what agents noticed during work.
@@ -549,13 +550,13 @@ with project-scoped visibility.
 
 Not all transcript signals are equally trustworthy:
 
-| Signal | Confidence | Example |
-| --- | --- | --- |
-| User corrections | High | "that's not how it works, check X instead" |
-| User-confirmed findings | High | Agent discovers, user validates ("yes exactly") |
-| Explicit decisions | High | "yes, do it that way" |
-| Agent conclusions with evidence | Medium | Query results shown, but user didn't confirm |
-| Agent assertions without evidence | Skip | Agent states fact without verifying |
+| Signal                            | Confidence | Example                                         |
+| --------------------------------- | ---------- | ----------------------------------------------- |
+| User corrections                  | High       | "that's not how it works, check X instead"      |
+| User-confirmed findings           | High       | Agent discovers, user validates ("yes exactly") |
+| Explicit decisions                | High       | "yes, do it that way"                           |
+| Agent conclusions with evidence   | Medium     | Query results shown, but user didn't confirm    |
+| Agent assertions without evidence | Skip       | Agent states fact without verifying             |
 
 User corrections are the highest-signal source. Agent assertions without
 evidence are the most common source of false memories and are skipped entirely.
@@ -564,13 +565,13 @@ evidence are the most common source of false memories and are skipped entirely.
 
 On the author's real usage across 6 active projects:
 
-| Metric | Value |
-| --- | --- |
-| Organic capture rate (real-time protocol) | ~8 memories/day |
-| Extraction yield (first two runs) | 110 memories from 30 sessions |
-| Duplicate detection (v2 architecture) | 17 caught per run vs 0 before |
-| Update detection (v2 architecture) | 8 per run vs 0 before |
-| Total active memories after extraction | 214 (from 83 pre-extraction) |
+| Metric                                    | Value                         |
+| ----------------------------------------- | ----------------------------- |
+| Organic capture rate (real-time protocol) | ~8 memories/day               |
+| Extraction yield (first two runs)         | 110 memories from 30 sessions |
+| Duplicate detection (v2 architecture)     | 17 caught per run vs 0 before |
+| Update detection (v2 architecture)        | 8 per run vs 0 before         |
+| Total active memories after extraction    | 214 (from 83 pre-extraction)  |
 
 Before extraction, 83 memories accumulated over 4 days of active work (~60
 migrated from a prior system, ~24 captured organically). Two extraction runs
@@ -600,8 +601,8 @@ Extraction uses Claude Sonnet for analysis — cost is ~$0.30–0.50 per run at
 typical daily session volumes (10–30 sessions). Schedule it however you like —
 cron, launchd, or a
 [Claude Code Cowork](https://docs.anthropic.com/en/docs/claude-code/cowork)
-scheduled task are all good options. The skill is idempotent: running it twice on
-the same sessions produces duplicates that get caught by the dedup pass.
+scheduled task are all good options. The skill is idempotent: running it twice
+on the same sessions produces duplicates that get caught by the dedup pass.
 
 See
 [`.ai/skills/nightly-extraction/SKILL.md`](.ai/skills/nightly-extraction/SKILL.md)
