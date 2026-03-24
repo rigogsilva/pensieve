@@ -180,6 +180,7 @@ output over human-readable text:
 ```bash
 __PENSIEVE_BIN__ recall "query" --output json
 __PENSIEVE_BIN__ list --output json
+__PENSIEVE_BIN__ list --since yesterday --output json
 __PENSIEVE_BIN__ read --json '{"topic_key":"<key>"}' --output json
 ```
 
