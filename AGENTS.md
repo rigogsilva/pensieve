@@ -87,11 +87,10 @@ Config at `~/.config/pensieve/config.toml`:
 
 ## Memory Protocol
 
-See `.ai/skills/pensieve-memory-protocol.md` for full protocol. See
-`.ai/skills/pensieve-setup.md` for first-time setup. See
-`.ai/skills/pensieve-import.md` for importing existing memories. See
-`.ai/skills/nightly-extraction/SKILL.md` for session transcript extraction. See
-`.ai/mcp-configs/README.md` for per-agent MCP configuration.
+See `.ai/skills/pensieve-setup.md` for the canonical Memory Protocol and
+first-time setup. See `.ai/skills/pensieve-import.md` for importing existing
+memories. See `.ai/skills/nightly-extraction/SKILL.md` for session transcript
+extraction. See `.ai/mcp-configs/README.md` for per-agent MCP configuration.
 
 ## README
 

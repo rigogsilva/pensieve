@@ -148,8 +148,33 @@ async fn main() {
             }
         }
 
-        Command::Read { output, topic_key, project } => {
+        Command::Read { output, topic_key, project, dry_run, json } => {
             let format = output.as_ref().unwrap_or(&cli.output);
+            let (topic_key, project) = if let Some(j) = json {
+                let v = read_json_input(&j).expect("invalid JSON input");
+                (
+                    v.get("topic_key")
+                        .and_then(serde_json::Value::as_str)
+                        .map(String::from)
+                        .or(topic_key),
+                    v.get("project")
+                        .and_then(serde_json::Value::as_str)
+                        .map(String::from)
+                        .or(project),
+                )
+            } else {
+                (topic_key, project)
+            };
+            let topic_key = topic_key.unwrap_or_else(|| {
+                eprintln!("Error: --topic-key is required");
+                std::process::exit(1);
+            });
+            if dry_run {
+                println!(
+                    "dry-run: would read memory with topic_key={topic_key:?} project={project:?}"
+                );
+                return;
+            }
             match ops::read::read_memory(&cfg, &topic_key, project.as_deref()) {
                 Ok(memory) => {
                     // Wrap in MemoryWithContent so content is included in JSON output

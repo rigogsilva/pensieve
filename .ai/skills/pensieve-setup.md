@@ -158,9 +158,9 @@ in your response.
 
 ### CLI usage for agents
 
-Use `--json` for input on commands that support it (`save`, `end-session`) —
-agents construct JSON naturally and it avoids shell quoting issues with
-backticks, newlines, and special characters:
+Use `--json` for input on commands that support it (`save`, `end-session`,
+`read`) — agents construct JSON naturally and it avoids shell quoting issues
+with backticks, newlines, and special characters:
 
 ```bash
 # types: gotcha | decision | preference | how-it-works | discovery
@@ -180,6 +180,7 @@ output over human-readable text:
 ```bash
 __PENSIEVE_BIN__ recall "query" --output json
 __PENSIEVE_BIN__ list --output json
+__PENSIEVE_BIN__ read --json '{"topic_key":"<key>"}' --output json
 ```
 
 Run `__PENSIEVE_BIN__ schema <command>` to get the exact JSON field names and
@@ -190,6 +191,8 @@ types. Never guess flag names — run `--help` if unsure.
 - `topic_key` reuses update the memory (revision increments) — no duplicates
 - `dry_run` on save/delete/archive previews without writing
 - `project` scopes memories; omit for global knowledge
+- `read --json '{"topic_key":"<key>"}' --output json` — fetch a specific memory
+by key; positional args are not supported and will fail silently
 <!-- pensieve:end -->
 
 ````

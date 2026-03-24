@@ -82,11 +82,19 @@ pub enum Command {
 
         /// Topic key
         #[arg(long)]
-        topic_key: String,
+        topic_key: Option<String>,
 
         /// Project name
         #[arg(long)]
         project: Option<String>,
+
+        /// Dry run
+        #[arg(long)]
+        dry_run: bool,
+
+        /// JSON input (inline, @file, or - for stdin)
+        #[arg(long)]
+        json: Option<String>,
     },
     /// Search memories
     Recall {
