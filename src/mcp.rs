@@ -28,7 +28,7 @@ pub struct SaveMemoryParams {
     pub r#type: String,
     /// Topic key (filename stem, lowercase alphanumeric with hyphens)
     pub topic_key: String,
-    /// Project name
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Tags for filtering
     #[serde(default)]
@@ -52,7 +52,7 @@ pub struct RecallParams {
     pub query: Option<String>,
     /// Filter by memory type
     pub r#type: Option<String>,
-    /// Filter by project
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Filter by tags
     pub tags: Option<Vec<String>>,
@@ -73,7 +73,7 @@ fn default_limit() -> usize {
 pub struct ReadMemoryParams {
     /// Topic key
     pub topic_key: String,
-    /// Project name
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
 }
 
@@ -81,7 +81,7 @@ pub struct ReadMemoryParams {
 pub struct DeleteMemoryParams {
     /// Topic key
     pub topic_key: String,
-    /// Project name
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Preview without deleting
     #[serde(default)]
@@ -90,7 +90,7 @@ pub struct DeleteMemoryParams {
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct ListMemoriesParams {
-    /// Filter by project
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Filter by type
     pub r#type: Option<String>,
@@ -104,7 +104,7 @@ pub struct ListMemoriesParams {
 pub struct ArchiveMemoryParams {
     /// Topic key
     pub topic_key: String,
-    /// Project name
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Mark as superseded by this topic key
     pub superseded_by: Option<String>,
@@ -127,7 +127,7 @@ pub struct ConfigureParams {
 pub struct InjectParams {
     /// Search query
     pub query: Option<String>,
-    /// Filter by project
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Max results
     pub limit: Option<usize>,
@@ -137,7 +137,7 @@ pub struct InjectParams {
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct GetContextParams {
-    /// Project name
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
     /// Source agent name
     pub source: Option<String>,
@@ -153,7 +153,7 @@ pub struct EndSessionParams {
     /// Source agent name
     #[serde(default = "default_source")]
     pub source: String,
-    /// Project name
+    /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
     pub project: Option<String>,
 }
 

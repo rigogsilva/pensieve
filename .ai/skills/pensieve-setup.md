@@ -164,7 +164,7 @@ with backticks, newlines, and special characters:
 
 ```bash
 # types: gotcha | decision | preference | how-it-works | discovery
-# project: scope to a repo/project, omit for global knowledge
+# project: GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
 __PENSIEVE_BIN__ save --json '{"type":"decision","topic_key":"my-key","title":"My Title","project":"myproject","content":"..."}'
 ```
 
@@ -191,7 +191,7 @@ types. Never guess flag names — run `--help` if unsure.
 
 - `topic_key` reuses update the memory (revision increments) — no duplicates
 - `dry_run` on save/delete/archive previews without writing
-- `project` scopes memories; omit for global knowledge
+- `project` = GitHub repo or org name (e.g. `wearhouse`, `camber-ops`). Omit for knowledge that spans all projects.
 - `read --json '{"topic_key":"<key>"}' --output json` — fetch a specific memory
 by key; positional args are not supported and will fail silently
 <!-- pensieve:end -->

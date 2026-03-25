@@ -46,7 +46,7 @@ pub enum Command {
         #[arg(long)]
         topic_key: Option<String>,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -84,7 +84,7 @@ pub enum Command {
         #[arg(long)]
         topic_key: Option<String>,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -109,7 +109,7 @@ pub enum Command {
         #[arg(long, rename_all = "kebab-case")]
         r#type: Option<String>,
 
-        /// Filter by project
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -135,7 +135,7 @@ pub enum Command {
         #[arg(long)]
         output: Option<OutputFormat>,
 
-        /// Filter by project
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -161,7 +161,7 @@ pub enum Command {
         #[arg(long)]
         topic_key: String,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -179,7 +179,7 @@ pub enum Command {
         #[arg(long)]
         topic_key: String,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -223,7 +223,7 @@ pub enum Command {
         #[arg(long)]
         output: Option<OutputFormat>,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -249,7 +249,7 @@ pub enum Command {
         #[arg(long)]
         source: Option<String>,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -274,7 +274,7 @@ pub enum Command {
         #[arg(long)]
         output: Option<OutputFormat>,
 
-        /// Project name
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
@@ -292,7 +292,7 @@ pub enum Command {
         #[arg(long)]
         query: Option<String>,
 
-        /// Filter by project
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
         #[arg(long)]
         project: Option<String>,
 
