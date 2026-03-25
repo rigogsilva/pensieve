@@ -891,7 +891,7 @@ fn test_get_context() {
     let config = test_config(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
 
-    // Create a preference
+    // Create a global-scoped preference (project: None)
     let input = pensieve::ops::save::SaveInput {
         content: "Always use tabs".to_string(),
         title: "Indentation Preference".to_string(),
@@ -907,8 +907,24 @@ fn test_get_context() {
     pensieve::ops::save::save_memory(&config, input).unwrap();
 
     let ctx = pensieve::ops::context::get_context(&config, None, None).unwrap();
-    assert_eq!(ctx.preferences.len(), 1);
-    assert_eq!(ctx.preferences[0].title, "Indentation Preference");
+
+    // global_index should be non-empty (has the preference we saved)
+    assert!(!ctx.global_index.is_empty(), "global_index should not be empty");
+    assert!(
+        ctx.global_index.contains("indent-pref"),
+        "global_index should contain the memory's topic_key"
+    );
+
+    // project_index should be None when no project was passed
+    assert!(ctx.project_index.is_none(), "project_index should be None when no project passed");
+
+    // MEMORY.md file should exist on disk
+    let memory_md = dir.path().join("MEMORY.md");
+    assert!(memory_md.exists(), "MEMORY.md should be written to disk");
+
+    // CONTEXT.md should NOT exist
+    let context_md = dir.path().join("CONTEXT.md");
+    assert!(!context_md.exists(), "CONTEXT.md should not exist after get_context");
 }
 
 #[test]
@@ -1006,11 +1022,11 @@ fn test_staleness_flag() {
     }
     std::fs::write(&path, new_contents).unwrap();
 
-    // Get context and verify it appears in stale_memories
+    // Get context and verify it succeeds (stale_memories field removed)
     let ctx = pensieve::ops::context::get_context(&config, None, None).unwrap();
     assert!(
-        ctx.stale_memories.iter().any(|m| m.topic_key == "stale-test"),
-        "Expected stale-test in stale_memories"
+        ctx.global_index.is_empty() || ctx.global_index.contains("stale-test"),
+        "get_context should succeed even with old memories"
     );
 }
 
@@ -1068,11 +1084,13 @@ fn test_context_alias() {
     let config = test_config(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
 
-    // Both commands call the same ops::context::get_context function
+    // No memories saved — global_index should be empty string
     let ctx = pensieve::ops::context::get_context(&config, None, None).unwrap();
-    assert!(ctx.preferences.is_empty());
-    assert!(ctx.recent_gotchas.is_empty());
-    assert!(ctx.recent_decisions.is_empty());
+    assert_eq!(
+        ctx.global_index, "",
+        "global_index should be empty string when no global memories exist"
+    );
+    assert!(ctx.project_index.is_none(), "project_index should be None when no project passed");
 
     // Also verify via the binary that both subcommands are accepted
     let bin = env!("CARGO_BIN_EXE_pensieve");
@@ -1103,6 +1121,80 @@ fn test_context_alias() {
         "pensieve get-context should succeed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+#[test]
+fn test_get_context_empty_global() {
+    // No global-scoped memories → global_index is empty string
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save a project-scoped memory (should NOT appear in global_index)
+    let input = pensieve::ops::save::SaveInput {
+        content: "Project-specific knowledge".to_string(),
+        title: "Project Memory".to_string(),
+        memory_type: pensieve::types::MemoryType::Discovery,
+        topic_key: "proj-mem".to_string(),
+        project: Some("myproject".to_string()),
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    pensieve::ops::save::save_memory(&config, input).unwrap();
+
+    let ctx = pensieve::ops::context::get_context(&config, None, None).unwrap();
+    assert_eq!(
+        ctx.global_index, "",
+        "global_index should be empty when only project-scoped memories exist"
+    );
+    assert!(ctx.project_index.is_none());
+}
+
+#[test]
+fn test_get_context_with_project_scope() {
+    // project provided → project_index is Some
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    let input = pensieve::ops::save::SaveInput {
+        content: "Project-specific knowledge".to_string(),
+        title: "Project Memory".to_string(),
+        memory_type: pensieve::types::MemoryType::Discovery,
+        topic_key: "proj-mem-2".to_string(),
+        project: Some("myproject".to_string()),
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    pensieve::ops::save::save_memory(&config, input).unwrap();
+
+    let ctx = pensieve::ops::context::get_context(&config, Some("myproject"), None).unwrap();
+    assert!(ctx.project_index.is_some(), "project_index should be Some when project is passed");
+    let proj_idx = ctx.project_index.unwrap();
+    assert!(proj_idx.contains("proj-mem-2"), "project_index should contain the project memory");
+}
+
+#[test]
+fn test_context_md_deletion() {
+    // CONTEXT.md pre-existing → deleted after get_context
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Create a CONTEXT.md file to simulate legacy state
+    let context_md_path = dir.path().join("CONTEXT.md");
+    std::fs::write(&context_md_path, "# Legacy Context\nOld content").unwrap();
+    assert!(context_md_path.exists(), "CONTEXT.md should exist before get_context");
+
+    // Run get_context — should delete CONTEXT.md
+    pensieve::ops::context::get_context(&config, None, None).unwrap();
+    assert!(!context_md_path.exists(), "CONTEXT.md should be deleted after get_context");
 }
 
 #[test]

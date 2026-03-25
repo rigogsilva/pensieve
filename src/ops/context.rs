@@ -2,16 +2,15 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
+use crate::ops::list::list_memories;
 use crate::storage;
 use crate::types::{MemoryCompact, MemoryStatus, PensieveConfig, SessionSummary};
 
 #[derive(Debug, Serialize)]
 pub struct ContextResponse {
+    pub global_index: String,
+    pub project_index: Option<String>,
     pub sessions: Vec<SessionSummary>,
-    pub preferences: Vec<MemoryCompact>,
-    pub recent_gotchas: Vec<MemoryCompact>,
-    pub recent_decisions: Vec<MemoryCompact>,
-    pub stale_memories: Vec<MemoryCompact>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
@@ -84,42 +83,9 @@ pub fn get_context(
     project: Option<&str>,
     _source: Option<&str>,
 ) -> Result<ContextResponse> {
+    let (global_index, project_index) = write_memory_index(config, project)?;
+
     let sessions = storage::list_sessions(config, 3)?;
-
-    let all_memories =
-        storage::list_memory_files(config, project, None, Some(&MemoryStatus::Active))?;
-
-    let now = Utc::now();
-    let thirty_days_ago = now - Duration::days(30);
-    let ninety_days_ago = now - Duration::days(90);
-
-    let mut preferences = Vec::new();
-    let mut recent_gotchas = Vec::new();
-    let mut recent_decisions = Vec::new();
-    let mut stale_memories = Vec::new();
-
-    for memory in &all_memories {
-        let compact = MemoryCompact::from(memory);
-
-        match memory.memory_type {
-            crate::types::MemoryType::Preference => preferences.push(compact.clone()),
-            crate::types::MemoryType::Gotcha => {
-                if memory.updated >= thirty_days_ago {
-                    recent_gotchas.push(compact.clone());
-                }
-            }
-            crate::types::MemoryType::Decision => {
-                if memory.updated >= thirty_days_ago {
-                    recent_decisions.push(compact.clone());
-                }
-            }
-            _ => {}
-        }
-
-        if memory.updated < ninety_days_ago {
-            stale_memories.push(compact);
-        }
-    }
 
     let mut notice = if crate::config::is_unconfigured() {
         Some(
@@ -148,74 +114,55 @@ pub fn get_context(
         }
     }
 
-    // Write CONTEXT.md
-    let _ = write_context_md(config, &sessions, &preferences, &recent_gotchas, &recent_decisions);
-
-    Ok(ContextResponse {
-        sessions,
-        preferences,
-        recent_gotchas,
-        recent_decisions,
-        stale_memories,
-        notice,
-    })
+    Ok(ContextResponse { global_index, project_index, sessions, notice })
 }
 
-fn write_context_md(
+fn format_memory_line(memory: &MemoryCompact) -> String {
+    let summary = memory
+        .preview
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .unwrap_or(memory.title.as_str());
+    format!("- [{}] {}: {}", memory.memory_type, memory.topic_key, summary)
+}
+
+fn write_memory_index(
     config: &PensieveConfig,
-    sessions: &[SessionSummary],
-    preferences: &[MemoryCompact],
-    gotchas: &[MemoryCompact],
-    decisions: &[MemoryCompact],
-) -> Result<()> {
-    let mut lines = Vec::new();
-    lines.push("# Pensieve Context".to_string());
-    lines.push(String::new());
-
-    if !preferences.is_empty() {
-        lines.push("## Preferences".to_string());
-        for p in preferences {
-            lines.push(format!("- **{}**: {}", p.title, p.preview));
+    project: Option<&str>,
+) -> Result<(String, Option<String>)> {
+    // Delete legacy CONTEXT.md if it exists
+    let context_md_path = config.memory_dir.join("CONTEXT.md");
+    if let Err(e) = std::fs::remove_file(&context_md_path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            // Ignore removal errors silently
         }
-        lines.push(String::new());
     }
 
-    if !gotchas.is_empty() {
-        lines.push("## Recent Gotchas".to_string());
-        for g in gotchas {
-            lines.push(format!("- **{}**: {}", g.title, g.preview));
+    // Global index: fetch all memories, filter to project==None only
+    let all_memories = list_memories(config, None, None, Some(&MemoryStatus::Active), None)?;
+    let global_memories: Vec<_> = all_memories.iter().filter(|m| m.project.is_none()).collect();
+
+    let global_content =
+        global_memories.iter().map(|m| format_memory_line(m)).collect::<Vec<_>>().join("\n");
+    std::fs::write(config.memory_dir.join("MEMORY.md"), &global_content)?;
+
+    // Project index: scoped fetch returns only that project's memories
+    let project_index = if let Some(proj) = project {
+        let project_memories =
+            list_memories(config, Some(proj), None, Some(&MemoryStatus::Active), None)?;
+        let project_content =
+            project_memories.iter().map(format_memory_line).collect::<Vec<_>>().join("\n");
+        let project_memory_path = config.memory_dir.join("projects").join(proj).join("MEMORY.md");
+        if let Some(parent) = project_memory_path.parent() {
+            std::fs::create_dir_all(parent)?;
         }
-        lines.push(String::new());
-    }
+        std::fs::write(&project_memory_path, &project_content)?;
+        Some(project_content)
+    } else {
+        None
+    };
 
-    if !decisions.is_empty() {
-        lines.push("## Recent Decisions".to_string());
-        for d in decisions {
-            lines.push(format!("- **{}**: {}", d.title, d.preview));
-        }
-        lines.push(String::new());
-    }
-
-    if !sessions.is_empty() {
-        lines.push("## Recent Sessions".to_string());
-        for s in sessions {
-            let project = s.project.as_deref().unwrap_or("global");
-            lines.push(format!(
-                "- **{} ({})**: {}",
-                s.created.format("%Y-%m-%d"),
-                project,
-                s.summary.lines().next().unwrap_or("")
-            ));
-        }
-        lines.push(String::new());
-    }
-
-    // Truncate to 200 lines
-    lines.truncate(200);
-
-    let content = lines.join("\n");
-    let path = config.memory_dir.join("CONTEXT.md");
-    std::fs::write(path, content)?;
-
-    Ok(())
+    Ok((global_content, project_index))
 }

@@ -90,6 +90,25 @@ Use whichever is available — both have identical capabilities:
 
 If MCP tools are unavailable, use CLI immediately — do not skip.
 
+### Global memory index
+
+`get_context` writes `~/.pensieve/memory/MEMORY.md` at session start — a
+one-line-per-memory index of all globally-scoped memories. For Claude Code, add
+this import to `~/.claude/CLAUDE.md` to load the index into every session
+automatically (even before `get_context` is called):
+
+```
+
+@~/.pensieve/memory/MEMORY.md
+
+```
+
+For other agents (Codex CLI, Gemini CLI, Cursor), the index is provided via
+`SessionStart` hook output — no additional config needed.
+
+Use `pensieve read --json '{"topic_key":"<key>"}' --output json` to fetch full
+content for any entry in the index.
+
 ### Step 1 — Session start (REQUIRED, do this first)
 
 Before any other work — before reading code, answering questions, or making a plan — run:
@@ -191,7 +210,8 @@ types. Never guess flag names — run `--help` if unsure.
 
 - `topic_key` reuses update the memory (revision increments) — no duplicates
 - `dry_run` on save/delete/archive previews without writing
-- `project` = GitHub repo or org name (e.g. `wearhouse`, `camber-ops`). Omit for knowledge that spans all projects.
+- `project` = GitHub repo or org name (e.g. `wearhouse`, `camber-ops`). Omit for
+  knowledge that spans all projects.
 - `read --json '{"topic_key":"<key>"}' --output json` — fetch a specific memory
 by key; positional args are not supported and will fail silently
 <!-- pensieve:end -->
