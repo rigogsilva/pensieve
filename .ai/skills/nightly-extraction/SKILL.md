@@ -175,7 +175,20 @@ thinner version.
 pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","project":"<project>","content":"<merged content>","source":"extraction","confidence":"<high|medium>"}'
 ```
 
-## Step 5 — Report
+## Step 5 — Regenerate MEMORY.md index files
+
+After all saves complete, regenerate the global and per-project MEMORY.md index
+files:
+
+```bash
+pensieve context 2>/dev/null || true
+```
+
+This updates `~/.pensieve/memory/MEMORY.md` and any per-project `MEMORY.md`
+files to reflect the memories saved in this extraction run. The command is
+idempotent — safe to re-run.
+
+## Step 6 — Report
 
 Summarize the extraction run:
 

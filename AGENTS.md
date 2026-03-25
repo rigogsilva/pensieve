@@ -67,7 +67,10 @@ cargo clippy
 - `archive` — archive or supersede a memory
 - `inject` — auto-inject relevant memories (for hook integration)
 - `configure` — view/update config (includes `--inject-enabled`)
-- `get-context` — session start bootstrap
+- `get-context` / `context` — session start bootstrap; writes
+  `~/.pensieve/memory/MEMORY.md` (global-scoped memories only) and
+  `projects/{project}/MEMORY.md` (per-project, when `--project` is given);
+  returns `{global_index, project_index, sessions, notice}`
 - `end-session` — save session summary
 - `reindex` — rebuild search index
 - `schema` — introspect command schemas
