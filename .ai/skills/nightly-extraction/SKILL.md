@@ -119,7 +119,7 @@ share context. Each subagent should:
        "topic_key": "kebab-case-key",
        "title": "Short descriptive title",
        "project": "project-name",
-       "content": "2-5 sentences. Include why and how to apply.",
+       "content": "First line: one short punchy sentence (this becomes the MEMORY.md index preview). Then 2-4 sentences with detail, why, and how to apply.",
        "confidence": "high|medium",
        "existing_key": "topic_key of memory being updated/contradicted (if any)",
        "existing_project": "project of that existing memory (if any)"
@@ -176,6 +176,8 @@ pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","pr
 ```
 
 ## Step 5 — Regenerate MEMORY.md index files
+
+**Run this in the main session after all subagents complete — do not delegate to a subagent.**
 
 After all saves complete, regenerate the global and per-project MEMORY.md index
 files:
