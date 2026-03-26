@@ -107,24 +107,45 @@ memories exist, then fetch full content on demand via `pensieve read`.
 
 ## Implementation Notes
 
-**Global-only filter**: `write_memory_index()` calls `list_memories(config, None, ...)` which returns ALL memories across all scopes, then filters with `.filter(|m| m.project.is_none())` before building the global index. This ensures only memories without a project scope appear in the global `MEMORY.md`.
+**Global-only filter**: `write_memory_index()` calls
+`list_memories(config, None, ...)` which returns ALL memories across all scopes,
+then filters with `.filter(|m| m.project.is_none())` before building the global
+index. This ensures only memories without a project scope appear in the global
+`MEMORY.md`.
 
-**`write_memory_index()` location**: `src/ops/context.rs`, private function. Signature:
+**`write_memory_index()` location**: `src/ops/context.rs`, private function.
+Signature:
+
 ```rust
 fn write_memory_index(config: &PensieveConfig, project: Option<&str>) -> Result<(String, Option<String>)>
 ```
-Returns `(global_content, Option<project_content>)` where each string is the full text written to disk.
 
-**`ContextResponse` location**: Defined inline in `src/ops/context.rs` (not `types.rs`). Fields: `global_index: String`, `project_index: Option<String>`, `sessions: Vec<SessionSummary>`, `notice: Option<String>`.
+Returns `(global_content, Option<project_content>)` where each string is the
+full text written to disk.
 
-**CONTEXT.md deletion**: `std::fs::remove_file()` with explicit `io::ErrorKind::NotFound` check — non-NotFound errors are also silently ignored so deletion never blocks context generation.
+**`ContextResponse` location**: Defined inline in `src/ops/context.rs` (not
+`types.rs`). Fields: `global_index: String`, `project_index: Option<String>`,
+`sessions: Vec<SessionSummary>`, `notice: Option<String>`.
 
-**Project MEMORY.md directory**: `create_dir_all(parent)` called before writing per-project `MEMORY.md` to handle projects that have never had a memory saved (their directory may not exist yet). This was a bug caught during review.
+**CONTEXT.md deletion**: `std::fs::remove_file()` with explicit
+`io::ErrorKind::NotFound` check — non-NotFound errors are also silently ignored
+so deletion never blocks context generation.
+
+**Project MEMORY.md directory**: `create_dir_all(parent)` called before writing
+per-project `MEMORY.md` to handle projects that have never had a memory saved
+(their directory may not exist yet). This was a bug caught during review.
 
 **Tests added**:
-- `test_get_context` — updated: asserts `global_index` non-empty, contains topic_key, `MEMORY.md` exists, `CONTEXT.md` absent
-- `test_context_alias` — updated: asserts `global_index == ""` when no memories, `project_index` is None
-- `test_staleness_flag` — updated: removed `stale_memories` assertion (field removed)
-- `test_get_context_empty_global` — new: project-scoped memories don't leak into global_index
-- `test_get_context_with_project_scope` — new: project_index is Some and contains project memory
-- `test_context_md_deletion` — new: pre-existing CONTEXT.md is deleted by get_context
+
+- `test_get_context` — updated: asserts `global_index` non-empty, contains
+  topic_key, `MEMORY.md` exists, `CONTEXT.md` absent
+- `test_context_alias` — updated: asserts `global_index == ""` when no memories,
+  `project_index` is None
+- `test_staleness_flag` — updated: removed `stale_memories` assertion (field
+  removed)
+- `test_get_context_empty_global` — new: project-scoped memories don't leak into
+  global_index
+- `test_get_context_with_project_scope` — new: project_index is Some and
+  contains project memory
+- `test_context_md_deletion` — new: pre-existing CONTEXT.md is deleted by
+  get_context

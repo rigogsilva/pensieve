@@ -502,7 +502,8 @@ Once set up, this happens automatically every session:
 
 1. **Session start** — agent calls `pensieve context` → gets last 3 sessions,
    preferences, recent gotchas/decisions. Also writes `MEMORY.md` index files
-   (global + per-project) loaded automatically via `@~/.pensieve/memory/MEMORY.md`.
+   (global + per-project) loaded automatically via
+   `@~/.pensieve/memory/MEMORY.md`.
 2. **During work** — agent saves discoveries: `pensieve save --type gotcha ...`
 3. **Search** — agent recalls prior knowledge: `pensieve recall "query"`
 4. **Context compaction** — when the conversation is auto-compacted, the
@@ -736,18 +737,18 @@ pensieve recall "keyword"
 
 When running as an MCP server (`pensieve serve`), exposes 10 tools:
 
-| Tool             | Description                               |
-| ---------------- | ----------------------------------------- |
-| `save_memory`    | Save/upsert a memory with frontmatter     |
-| `recall`         | Hybrid keyword + vector search            |
-| `read_memory`    | Read full content by topic key            |
-| `delete_memory`  | Delete a memory                           |
-| `list_memories`  | List with filters (type, project, status) |
-| `archive_memory` | Archive or supersede a memory             |
+| Tool             | Description                                    |
+| ---------------- | ---------------------------------------------- |
+| `save_memory`    | Save/upsert a memory with frontmatter          |
+| `recall`         | Hybrid keyword + vector search                 |
+| `read_memory`    | Read full content by topic key                 |
+| `delete_memory`  | Delete a memory                                |
+| `list_memories`  | List with filters (type, project, status)      |
+| `archive_memory` | Archive or supersede a memory                  |
 | `prime`          | Prime context with relevant memories for hooks |
-| `configure`      | View or update config                     |
-| `get_context`    | Session start — load prior knowledge      |
-| `end_session`    | Session end — save summary                |
+| `configure`      | View or update config                          |
+| `get_context`    | Session start — load prior knowledge           |
+| `end_session`    | Session end — save summary                     |
 
 ## Importing existing memories
 
