@@ -177,7 +177,8 @@ pensieve save --json '{"type":"<type>","topic_key":"<key>","title":"<title>","pr
 
 ## Step 5 — Regenerate MEMORY.md index files
 
-**Run this in the main session after all subagents complete — do not delegate to a subagent.**
+**Run this in the main session after all subagents complete — do not delegate to
+a subagent.**
 
 After all saves complete, regenerate the global and per-project MEMORY.md index
 files:
