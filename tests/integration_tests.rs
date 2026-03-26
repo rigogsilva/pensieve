@@ -1255,7 +1255,10 @@ fn test_prime_query_flag() {
             .unwrap();
 
     assert!(result.contains("patronus-prime"), "prime should include topic_key, got: {result}");
-    assert!(result.contains("patronus charm requires focus"), "prime should include preview, got: {result}");
+    assert!(
+        result.contains("patronus charm requires focus"),
+        "prime should include preview, got: {result}"
+    );
     assert!(result.contains("[Pensieve:"), "should have compact format header");
 }
 
