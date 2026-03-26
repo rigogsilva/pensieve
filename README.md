@@ -81,13 +81,15 @@ git-friendly, browsable in any editor. A SQLite sidecar provides hybrid search
 │   └── notebook-cell-format.md
 ├── projects/
 │   ├── hogwarts/
+│   │   ├── MEMORY.md          # Auto-generated index (hogwarts project)
 │   │   └── patronus-charm-tips.md
 │   └── ministry/
+│       ├── MEMORY.md          # Auto-generated index (ministry project)
 │       └── floo-network-config.md
 ├── sessions/                  # Session summaries
 │   └── 2026-03-15T143022-hogwarts-claude-code.md
-├── index.sqlite               # Search index (rebuildable)
-└── CONTEXT.md                 # Auto-generated context snapshot
+├── MEMORY.md                  # Auto-generated global index (one line per memory)
+└── index.sqlite               # Search index (rebuildable)
 ```
 
 ## Getting started
@@ -332,8 +334,8 @@ Returns:
 - Stale memory warnings (>90 days old)
 - First-run notice if unconfigured
 
-Also generates `CONTEXT.md` in the memory directory for agents that auto-load
-files.
+Also generates `MEMORY.md` index files — global and per-project — listing all
+active memories one line each for fast agent navigation.
 
 ### end-session
 
@@ -499,8 +501,8 @@ On the author's real memory corpus, a read-only weight sweep favored
 Once set up, this happens automatically every session:
 
 1. **Session start** — agent calls `pensieve context` → gets last 3 sessions,
-   preferences, recent gotchas/decisions. Also writes `CONTEXT.md` for agents
-   that auto-load files.
+   preferences, recent gotchas/decisions. Also writes `MEMORY.md` index files
+   (global + per-project) loaded automatically via `@~/.pensieve/memory/MEMORY.md`.
 2. **During work** — agent saves discoveries: `pensieve save --type gotcha ...`
 3. **Search** — agent recalls prior knowledge: `pensieve recall "query"`
 4. **Context compaction** — when the conversation is auto-compacted, the
