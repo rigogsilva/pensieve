@@ -33,11 +33,8 @@ fn format_prime(results: &[crate::types::MemoryCompact]) -> String {
 
     let mut out = format!("[Pensieve: {} relevant memories]\n", results.len());
     for r in results {
-        let summary = r
-            .preview
-            .lines()
-            .find(|l| !l.trim().is_empty())
-            .map_or(r.title.as_str(), str::trim);
+        let summary =
+            r.preview.lines().find(|l| !l.trim().is_empty()).map_or(r.title.as_str(), str::trim);
         let _ = writeln!(out, "- [{}] {}: {}", r.memory_type, r.topic_key, summary);
     }
     out
