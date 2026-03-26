@@ -8,7 +8,7 @@ pub fn configure(
     memory_dir: Option<&str>,
     keyword_weight: Option<f64>,
     vector_weight: Option<f64>,
-    inject_enabled: Option<bool>,
+    prime_enabled: Option<bool>,
     dry_run: bool,
 ) -> Result<PensieveConfig> {
     let mut new_config = current_config.clone();
@@ -22,8 +22,8 @@ pub fn configure(
     if let Some(vw) = vector_weight {
         new_config.retrieval.vector_weight = vw;
     }
-    if let Some(ie) = inject_enabled {
-        new_config.inject.enabled = ie;
+    if let Some(ie) = prime_enabled {
+        new_config.prime.enabled = ie;
     }
 
     if dry_run {

@@ -7,14 +7,14 @@ fn test_config(dir: &TempDir) -> pensieve::types::PensieveConfig {
     pensieve::types::PensieveConfig {
         memory_dir: dir.path().to_path_buf(),
         retrieval: pensieve::types::RetrievalConfig::default(),
-        inject: pensieve::types::InjectConfig::default(),
+        prime: pensieve::types::PrimeConfig::default(),
     }
 }
 
-// Helper to create a config with inject enabled
+// Helper to create a config with priming enabled
 fn test_config_inject_enabled(dir: &TempDir) -> pensieve::types::PensieveConfig {
     let mut cfg = test_config(dir);
-    cfg.inject.enabled = true;
+    cfg.prime.enabled = true;
     cfg
 }
 
@@ -1198,17 +1198,17 @@ fn test_context_md_deletion() {
 }
 
 #[test]
-fn test_inject_disabled() {
+fn test_prime_disabled() {
     let dir = TempDir::new().unwrap();
     let config = test_config(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
 
     // Save a memory
     let input = pensieve::ops::save::SaveInput {
-        content: "Inject disabled content".to_string(),
-        title: "Inject Disabled Test".to_string(),
+        content: "Prime disabled content".to_string(),
+        title: "Prime Disabled Test".to_string(),
         memory_type: pensieve::types::MemoryType::Discovery,
-        topic_key: "inject-disabled".to_string(),
+        topic_key: "prime-disabled".to_string(),
         project: None,
         tags: vec![],
         source: None,
@@ -1218,15 +1218,15 @@ fn test_inject_disabled() {
     };
     pensieve::ops::save::save_memory(&config, input).unwrap();
 
-    // inject.enabled is false by default — should return empty
+    // prime.enabled is false by default — should return empty
     let result =
-        pensieve::ops::inject::run_inject(&config, Some("inject".to_string()), None, None, None)
+        pensieve::ops::prime::run_prime(&config, Some("prime".to_string()), None, None, None)
             .unwrap();
-    assert!(result.is_empty(), "inject should return empty when disabled");
+    assert!(result.is_empty(), "prime should return empty when disabled");
 }
 
 #[test]
-fn test_inject_query_flag() {
+fn test_prime_query_flag() {
     let dir = TempDir::new().unwrap();
     let config = test_config_inject_enabled(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
@@ -1236,7 +1236,7 @@ fn test_inject_query_flag() {
         content: "The patronus charm requires focus".to_string(),
         title: "Patronus Charm".to_string(),
         memory_type: pensieve::types::MemoryType::HowItWorks,
-        topic_key: "patronus-inject".to_string(),
+        topic_key: "patronus-prime".to_string(),
         project: None,
         tags: vec![],
         source: None,
@@ -1249,18 +1249,18 @@ fn test_inject_query_flag() {
     // Index it
     index_memory(&config, &memory);
 
-    // Run inject with --query flag
+    // Run prime with --query flag
     let result =
-        pensieve::ops::inject::run_inject(&config, Some("patronus".to_string()), None, None, None)
+        pensieve::ops::prime::run_prime(&config, Some("patronus".to_string()), None, None, None)
             .unwrap();
 
-    assert!(result.contains("patronus-inject"), "inject should include topic_key, got: {result}");
-    assert!(result.contains("patronus charm requires focus"), "inject should include preview, got: {result}");
+    assert!(result.contains("patronus-prime"), "prime should include topic_key, got: {result}");
+    assert!(result.contains("patronus charm requires focus"), "prime should include preview, got: {result}");
     assert!(result.contains("[Pensieve:"), "should have compact format header");
 }
 
 #[test]
-fn test_inject_empty_result() {
+fn test_prime_empty_result() {
     let dir = TempDir::new().unwrap();
     let config = test_config_inject_enabled(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
@@ -1268,7 +1268,7 @@ fn test_inject_empty_result() {
     // Index exists but no memories match
     let _idx = pensieve::index::Index::open(&config.memory_dir).unwrap();
 
-    let result = pensieve::ops::inject::run_inject(
+    let result = pensieve::ops::prime::run_prime(
         &config,
         Some("nonexistent query".to_string()),
         None,
@@ -1277,11 +1277,11 @@ fn test_inject_empty_result() {
     )
     .unwrap();
 
-    assert!(result.is_empty(), "inject with no matches should return empty");
+    assert!(result.is_empty(), "prime with no matches should return empty");
 }
 
 #[test]
-fn test_inject_json_format() {
+fn test_prime_json_format() {
     let dir = TempDir::new().unwrap();
     let config = test_config_inject_enabled(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
@@ -1291,7 +1291,7 @@ fn test_inject_json_format() {
         content: "Expelliarmus disarming charm".to_string(),
         title: "Expelliarmus".to_string(),
         memory_type: pensieve::types::MemoryType::HowItWorks,
-        topic_key: "expelliarmus-inject".to_string(),
+        topic_key: "expelliarmus-prime".to_string(),
         project: None,
         tags: vec![],
         source: None,
@@ -1302,7 +1302,7 @@ fn test_inject_json_format() {
     let memory = pensieve::ops::save::save_memory(&config, input).unwrap();
     index_memory(&config, &memory);
 
-    let result = pensieve::ops::inject::run_inject(
+    let result = pensieve::ops::prime::run_prime(
         &config,
         Some("expelliarmus".to_string()),
         None,
@@ -1318,38 +1318,38 @@ fn test_inject_json_format() {
 }
 
 #[test]
-fn test_inject_no_stderr() {
+fn test_prime_no_stderr() {
     let dir = TempDir::new().unwrap();
     let config = test_config_inject_enabled(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
 
-    // Run inject via binary and capture stderr
+    // Run prime via binary and capture stderr
     let bin = env!("CARGO_BIN_EXE_pensieve");
     let output = std::process::Command::new(bin)
         .arg("--memory-dir")
         .arg(dir.path().to_str().unwrap())
-        .arg("inject")
+        .arg("prime")
         .arg("--query")
         .arg("test")
         .output()
-        .expect("failed to run pensieve inject");
+        .expect("failed to run pensieve prime");
 
-    assert!(output.status.success(), "inject should exit 0");
+    assert!(output.status.success(), "prime should exit 0");
     assert!(
         output.stderr.is_empty(),
-        "inject should produce no stderr, got: {}",
+        "prime should produce no stderr, got: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
 
 #[test]
-fn test_inject_stdin_json() {
+fn test_prime_stdin_json() {
     use std::io::Write;
     use std::process::Stdio;
 
     let dir = TempDir::new().unwrap();
     let mut config = test_config_inject_enabled(&dir);
-    config.inject.relevance_threshold = 0.0; // Accept any score for testing
+    config.prime.relevance_threshold = 0.0; // Accept any score for testing
     pensieve::storage::ensure_dirs(&config).unwrap();
 
     // Save and index a memory
@@ -1373,12 +1373,12 @@ fn test_inject_stdin_json() {
     let mut child = std::process::Command::new(bin)
         .arg("--memory-dir")
         .arg(dir.path().to_str().unwrap())
-        .arg("inject")
+        .arg("prime")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("failed to start pensieve inject");
+        .expect("failed to start pensieve prime");
 
     let stdin = child.stdin.as_mut().expect("failed to open stdin");
     stdin
@@ -1387,38 +1387,38 @@ fn test_inject_stdin_json() {
     drop(child.stdin.take());
 
     let output = child.wait_with_output().expect("failed to wait");
-    assert!(output.status.success(), "inject should exit 0");
-    // Note: inject.enabled defaults to false in the binary, so it will return empty
+    assert!(output.status.success(), "prime should exit 0");
+    // Note: prime.enabled defaults to false in the binary, so it will return empty
     // unless we pass config. The binary test just verifies no crash and exit 0.
     assert!(
         output.stderr.is_empty(),
-        "inject should produce no stderr: {}",
+        "prime should produce no stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
 
 #[test]
-fn test_configure_inject_enabled() {
+fn test_configure_prime_enabled() {
     let dir = TempDir::new().unwrap();
     let config = test_config(&dir);
     pensieve::storage::ensure_dirs(&config).unwrap();
 
-    // Enable inject
+    // Enable prime
     let new_config =
         pensieve::ops::configure::configure(&config, None, None, None, Some(true), true).unwrap();
-    assert!(new_config.inject.enabled);
+    assert!(new_config.prime.enabled);
 
-    // Disable inject
+    // Disable prime
     let new_config =
         pensieve::ops::configure::configure(&config, None, None, None, Some(false), true).unwrap();
-    assert!(!new_config.inject.enabled);
+    assert!(!new_config.prime.enabled);
 }
 
 #[test]
-fn test_inject_threshold() {
+fn test_prime_threshold() {
     let dir = TempDir::new().unwrap();
     let mut config = test_config_inject_enabled(&dir);
-    config.inject.relevance_threshold = 999.0; // Impossibly high threshold
+    config.prime.relevance_threshold = 999.0; // Impossibly high threshold
     pensieve::storage::ensure_dirs(&config).unwrap();
 
     // Save and index a memory
@@ -1439,7 +1439,7 @@ fn test_inject_threshold() {
 
     // High threshold should filter everything out
     let result =
-        pensieve::ops::inject::run_inject(&config, Some("threshold".to_string()), None, None, None)
+        pensieve::ops::prime::run_prime(&config, Some("threshold".to_string()), None, None, None)
             .unwrap();
     assert!(result.is_empty(), "high threshold should filter all results");
 }

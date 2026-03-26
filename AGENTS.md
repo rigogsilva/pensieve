@@ -47,7 +47,7 @@ cargo clippy
 - Dual surface: CLI (`src/cli.rs`) + MCP server (`src/mcp.rs`)
 - Library crate (`src/lib.rs`) exposes all modules
 - Core operations: `src/ops/` (save, read, delete, list, archive, recall,
-  inject, reindex, configure, context, end_session, schema, setup, update)
+  prime, inject (alias), reindex, configure, context, end_session, schema, setup, update)
 - Storage layer: `src/storage.rs` — markdown read/write with atomic temp+rename
 - Index: `src/index.rs` — SQLite with FTS5 (BM25) + vec0 (vector similarity)
 - Embedder: `src/embedder.rs` — fastembed singleton via OnceLock+Mutex
@@ -65,8 +65,8 @@ cargo clippy
 - `list` — list memories with filters
 - `delete` — delete a memory
 - `archive` — archive or supersede a memory
-- `inject` — auto-inject relevant memories (for hook integration)
-- `configure` — view/update config (includes `--inject-enabled`)
+- `prime` — prime context with relevant memories (for hook integration); `inject` is a hidden alias for backward compat
+- `configure` — view/update config (includes `--prime-enabled`)
 - `get-context` / `context` — session start bootstrap; writes
   `~/.pensieve/memory/MEMORY.md` (global-scoped memories only) and
   `projects/{project}/MEMORY.md` (per-project, when `--project` is given);
@@ -85,7 +85,7 @@ Config at `~/.config/pensieve/config.toml`:
 
 - `memory_dir` — storage location (default: `~/.pensieve/memory/`)
 - `[retrieval]` — `keyword_weight` (0.7), `vector_weight` (0.3)
-- `[inject]` — `enabled` (false), `relevance_threshold` (0.3), `max_results`
+- `[prime]` — `enabled` (false), `relevance_threshold` (0.3), `max_results`
   (3), `format` ("compact")
 
 ## Memory Protocol

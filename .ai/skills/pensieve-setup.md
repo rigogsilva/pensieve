@@ -225,22 +225,22 @@ by key; positional args are not supported and will fail silently
 All agents that support session hooks should wire `SessionStart` to load context
 at session start and after compaction. This is NOT opt-in — always set it up.
 
-### Auto-inject hook (strictly opt-in — only add if user explicitly says yes)
+### Memory priming hook (strictly opt-in — only add if user explicitly says yes)
 
 The `UserPromptSubmit` / `BeforeAgent` / `beforeSubmitPrompt` hooks are **opt-in only**.
-Do not add them unless the user has explicitly said "yes" to auto-inject **in this
+Do not add them unless the user has explicitly said "yes" to memory priming **in this
 conversation**. If there is any ambiguity — if the user hasn't been asked yet, or
 hasn't answered — skip these hooks entirely. Never assume consent.
 
-Ask the user: "Would you like to enable auto-inject? Without it, I only use
+Ask the user: "Would you like to enable memory priming? Without it, I only use
 Pensieve when you explicitly ask me to recall something — meaning I'll miss
-relevant memories I don't know to look for. With auto-inject enabled, relevant
+relevant memories I don't know to look for. With memory priming enabled, relevant
 memories are automatically surfaced before every prompt, so I always have
 context even when I don't know to search for it. It's opt-in and you can
-disable it anytime with `__PENSIEVE_BIN__ configure --inject-enabled false`."
+disable it anytime with `__PENSIEVE_BIN__ configure --prime-enabled false`."
 
 If the user says **yes**:
-1. Run: `__PENSIEVE_BIN__ configure --inject-enabled true`
+1. Run: `__PENSIEVE_BIN__ configure --prime-enabled true`
 2. Add the pre-prompt hook for your agent (see below)
 
 If the user says **no** or hasn't answered: skip the pre-prompt hook entirely.
@@ -265,7 +265,7 @@ If it exists, parse the JSON and **compare each pensieve hook command to the can
         "hooks": [
           {
             "type": "command",
-            "command": "__PENSIEVE_BIN__ inject --limit 3"
+            "command": "__PENSIEVE_BIN__ prime --limit 3"
           }
         ]
       }
@@ -310,7 +310,7 @@ hooks. Check for "pensieve" to avoid duplicates.
   "hooks": {
     "beforeSubmitPrompt": [
       {
-        "command": "__PENSIEVE_BIN__ inject --limit 3"
+        "command": "__PENSIEVE_BIN__ prime --limit 3"
       }
     ]
   }
@@ -330,7 +330,7 @@ existing hooks. Check for "pensieve" to avoid duplicates.
     "BeforeAgent": [
       {
         "type": "command",
-        "command": "__PENSIEVE_BIN__ inject --limit 3"
+        "command": "__PENSIEVE_BIN__ prime --limit 3"
       }
     ],
     "SessionStart": [

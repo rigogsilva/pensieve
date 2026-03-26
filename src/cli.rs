@@ -209,8 +209,12 @@ pub enum Command {
         #[arg(long)]
         vector_weight: Option<f64>,
 
-        /// Enable or disable auto-inject
+        /// Enable or disable memory priming
         #[arg(long)]
+        prime_enabled: Option<bool>,
+
+        /// Enable or disable memory priming (alias for --prime-enabled)
+        #[arg(long, hide = true)]
         inject_enabled: Option<bool>,
 
         /// Dry run
@@ -282,7 +286,30 @@ pub enum Command {
         #[arg(long)]
         source: Option<String>,
     },
-    /// Auto-inject relevant memories (for hook integration)
+    /// Prime context with relevant memories (for hook integration)
+    Prime {
+        /// Output format
+        #[arg(long)]
+        output: Option<OutputFormat>,
+
+        /// Direct query (fallback when stdin is empty)
+        #[arg(long)]
+        query: Option<String>,
+
+        /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
+        #[arg(long)]
+        project: Option<String>,
+
+        /// Max results
+        #[arg(long)]
+        limit: Option<usize>,
+
+        /// Output format: compact or json
+        #[arg(long)]
+        format: Option<String>,
+    },
+    /// Prime context with relevant memories (alias for prime, for backward compat)
+    #[command(hide = true)]
     Inject {
         /// Output format
         #[arg(long)]

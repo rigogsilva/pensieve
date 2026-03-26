@@ -124,7 +124,7 @@ pub struct ConfigureParams {
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
-pub struct InjectParams {
+pub struct PrimeParams {
     /// Search query
     pub query: Option<String>,
     /// GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
@@ -342,11 +342,11 @@ impl PensieveServer {
     }
 
     #[tool(
-        description = "Auto-inject relevant memories for a prompt. Returns compact results above relevance threshold. Designed for hook integration."
+        description = "Prime context with relevant memories for a prompt. Returns compact results above relevance threshold. Designed for hook integration."
     )]
-    async fn inject(&self, params: Parameters<InjectParams>) -> String {
+    async fn prime(&self, params: Parameters<PrimeParams>) -> String {
         let params = params.0;
-        match ops::inject::run_inject(
+        match ops::prime::run_prime(
             &self.config,
             params.query,
             params.project,

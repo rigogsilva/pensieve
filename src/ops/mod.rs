@@ -5,6 +5,7 @@ pub mod delete;
 pub mod end_session;
 pub mod inject;
 pub mod list;
+pub mod prime;
 pub mod read;
 pub mod recall;
 pub mod reindex;

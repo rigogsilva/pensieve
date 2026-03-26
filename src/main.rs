@@ -297,14 +297,17 @@ async fn main() {
             memory_dir,
             keyword_weight,
             vector_weight,
+            prime_enabled,
             inject_enabled,
             dry_run,
         } => {
             let format = output.as_ref().unwrap_or(&cli.output);
+            // --inject-enabled is a backward-compat alias for --prime-enabled
+            let effective_prime_enabled = prime_enabled.or(inject_enabled);
             if memory_dir.is_none()
                 && keyword_weight.is_none()
                 && vector_weight.is_none()
-                && inject_enabled.is_none()
+                && effective_prime_enabled.is_none()
             {
                 output_result(format, &cfg);
             } else {
@@ -313,7 +316,7 @@ async fn main() {
                     memory_dir.as_deref(),
                     keyword_weight,
                     vector_weight,
-                    inject_enabled,
+                    effective_prime_enabled,
                     dry_run,
                 ) {
                     Ok(new_cfg) => output_result(format, &new_cfg),
@@ -337,9 +340,10 @@ async fn main() {
             }
         }
 
-        Command::Inject { output: _, query, project, limit, format } => {
+        Command::Prime { output: _, query, project, limit, format }
+        | Command::Inject { output: _, query, project, limit, format } => {
             if let Ok(result) =
-                ops::inject::run_inject(&cfg, query, project, limit, format.as_deref())
+                ops::prime::run_prime(&cfg, query, project, limit, format.as_deref())
             {
                 if !result.is_empty() {
                     print!("{result}");

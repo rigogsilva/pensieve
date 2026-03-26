@@ -365,20 +365,23 @@ pensieve schema save    # show save command parameters
 pensieve schema         # show all commands
 ```
 
-### inject
+### prime
 
-Auto-inject relevant memories (designed for hook integration):
+Prime context with relevant memories (designed for hook integration):
 
 ```bash
 # Via stdin (hook mode — reads prompt from JSON)
-echo '{"prompt":"patronus"}' | pensieve inject
+echo '{"prompt":"patronus"}' | pensieve prime
 
 # Via flag (manual/testing mode)
-pensieve inject --query "patronus"
+pensieve prime --query "patronus"
 ```
 
 Returns compact output above the relevance threshold. If no relevant memories
-are found or inject is disabled, outputs nothing. Never blocks the agent.
+are found or priming is disabled, outputs nothing. Never blocks the agent.
+
+`pensieve inject` still works as an alias for backward compatibility with
+existing hooks.
 
 ### configure
 
@@ -389,8 +392,8 @@ pensieve configure                          # show current config
 pensieve configure --memory-dir ~/path      # set memory directory
 pensieve configure --keyword-weight 0.7     # tune retrieval
 pensieve configure --vector-weight 0.3
-pensieve configure --inject-enabled true    # enable auto-inject
-pensieve configure --inject-enabled false   # disable auto-inject
+pensieve configure --prime-enabled true     # enable memory priming
+pensieve configure --prime-enabled false    # disable memory priming
 ```
 
 ### Global flags
@@ -608,26 +611,33 @@ See
 [`.ai/skills/nightly-extraction/SKILL.md`](.ai/skills/nightly-extraction/SKILL.md)
 for the full skill definition.
 
-## Auto-inject
+## Memory Priming
 
-Agents don't know what they don't know. Without auto-inject, they miss relevant
-memories because they never search. Every major agent memory system —
+Agents don't know what they don't know. Without memory priming, they miss
+relevant memories because they never search. Every major agent memory system —
 [OpenClaw](https://docs.openclaw.ai/concepts/memory),
 [Mem0](https://docs.mem0.ai/),
 [CrewAI](https://docs.crewai.com/concepts/memory),
 [LangGraph](https://langchain-ai.github.io/langgraph/concepts/memory/) — has
-converged on the same pattern: **automatically inject relevant memories before
-each prompt**.
+converged on the same pattern: surface relevant memories before each prompt.
 
-When enabled, `pensieve inject` runs before every prompt via your agent's hook
-system. It reads the prompt from stdin, searches for relevant memories, and
-injects them into context — like the Pensieve basin surfacing the right thought
-at the right moment.
+Pensieve's approach is modeled on the **cognitive science priming effect**: when
+you're exposed to a related cue, it lowers the activation threshold for
+associated memories, making them faster and easier to retrieve. You're not
+loading the full memory — you're making it accessible. Each turn,
+`pensieve prime` surfaces up to 3 topic keys from your memory store, matching
+the format of your MEMORY.md index. The agent sees the key and can fetch the
+full body in a single `read` call — or ignore it entirely if irrelevant.
+
+In a 3-scenario eval comparing the old title-only hint format against the new
+key-first format, the key-first output required **50% fewer tool calls** (8→4)
+to retrieve the same information. The savings compound because priming fires on
+every turn.
 
 **It's opt-in.** Disabled by default. Enable during `pensieve setup` or with:
 
 ```bash
-pensieve configure --inject-enabled true
+pensieve configure --prime-enabled true
 ```
 
 ### Platform support
@@ -659,10 +669,10 @@ gotchas — not from zero.
 After context compaction, `SessionStart` fires again, recovering the same
 knowledge automatically.
 
-### How inject works
+### How priming works
 
 When the `UserPromptSubmit` (or equivalent) hook fires, it pipes the agent's
-JSON payload into `pensieve inject`:
+JSON payload into `pensieve prime`:
 
 ```
 {"prompt": "what do I know about the patronus charm?"}
@@ -680,28 +690,28 @@ Pensieve then:
 4. **Filters by threshold** — only memories above `relevance_threshold` (default
    `0.3`) are included. If nothing clears the bar, nothing is injected.
 5. **Caps results** — at most `max_results` memories (default `3`) are returned.
-6. **Outputs compact text** injected above the prompt:
+6. **Outputs compact text** surfaced above the prompt:
 
 ```
 [Pensieve: 2 relevant memories]
-- (gotcha) Patronus requires a specific happy memory — project:hogwarts
-- (how-it-works) Wand movement is circular — project:hogwarts
+- [gotcha] patronus-charm-focus: Patronus requires a specific happy memory
+- [how-it-works] wand-movement-circular: Wand movement is circular
 ```
 
-If inject is disabled, no relevant memories exist, or any error occurs, the
+If priming is disabled, no relevant memories exist, or any error occurs, the
 command exits silently — it never blocks or surfaces errors to the agent.
 
 Tune the defaults:
 
 ```bash
 pensieve configure --relevance-threshold 0.5   # stricter filtering
-pensieve configure --inject-max-results 5      # more results
+pensieve configure --prime-max-results 5       # more results
 ```
 
 ### How to disable
 
 ```bash
-pensieve configure --inject-enabled false
+pensieve configure --prime-enabled false
 ```
 
 The hooks remain in place but become no-ops — no need to remove them.
@@ -732,7 +742,7 @@ When running as an MCP server (`pensieve serve`), exposes 10 tools:
 | `delete_memory`  | Delete a memory                           |
 | `list_memories`  | List with filters (type, project, status) |
 | `archive_memory` | Archive or supersede a memory             |
-| `inject`         | Auto-inject relevant memories for hooks   |
+| `prime`          | Prime context with relevant memories for hooks |
 | `configure`      | View or update config                     |
 | `get_context`    | Session start — load prior knowledge      |
 | `end_session`    | Session end — save summary                |

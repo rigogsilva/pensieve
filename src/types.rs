@@ -203,32 +203,35 @@ pub struct PensieveConfig {
     pub memory_dir: PathBuf,
     #[serde(default)]
     pub retrieval: RetrievalConfig,
-    #[serde(default)]
-    pub inject: InjectConfig,
+    #[serde(default, alias = "inject")]
+    pub prime: PrimeConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InjectConfig {
+pub struct PrimeConfig {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default = "default_relevance_threshold")]
     pub relevance_threshold: f64,
     #[serde(default = "default_max_results")]
     pub max_results: usize,
-    #[serde(default = "default_inject_format")]
+    #[serde(default = "default_prime_format")]
     pub format: String,
 }
 
-impl Default for InjectConfig {
+impl Default for PrimeConfig {
     fn default() -> Self {
         Self {
             enabled: false,
             relevance_threshold: default_relevance_threshold(),
             max_results: default_max_results(),
-            format: default_inject_format(),
+            format: default_prime_format(),
         }
     }
 }
+
+/// Backward-compat type alias — old configs that use `InjectConfig` still work.
+pub type InjectConfig = PrimeConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrievalConfig {
@@ -249,7 +252,7 @@ impl Default for PensieveConfig {
         Self {
             memory_dir: default_memory_dir(),
             retrieval: RetrievalConfig::default(),
-            inject: InjectConfig::default(),
+            prime: PrimeConfig::default(),
         }
     }
 }
@@ -274,6 +277,6 @@ fn default_max_results() -> usize {
     3
 }
 
-fn default_inject_format() -> String {
+fn default_prime_format() -> String {
     "compact".to_string()
 }

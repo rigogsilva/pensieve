@@ -26,7 +26,7 @@ fn read_query_from_stdin() -> Option<String> {
     None
 }
 
-fn format_compact(results: &[crate::types::MemoryCompact]) -> String {
+fn format_prime(results: &[crate::types::MemoryCompact]) -> String {
     if results.is_empty() {
         return String::new();
     }
@@ -44,14 +44,14 @@ fn format_compact(results: &[crate::types::MemoryCompact]) -> String {
     out
 }
 
-pub fn run_inject(
+pub fn run_prime(
     config: &PensieveConfig,
     query_flag: Option<String>,
     project: Option<String>,
     limit: Option<usize>,
     format: Option<&str>,
 ) -> Result<String> {
-    // Config gate: if prime (formerly inject) is disabled, output nothing
+    // Config gate: if prime is disabled, output nothing
     if !config.prime.enabled {
         return Ok(String::new());
     }
@@ -91,6 +91,6 @@ pub fn run_inject(
 
     match output_format {
         "json" => Ok(serde_json::to_string(&filtered).unwrap_or_default()),
-        _ => Ok(format_compact(&filtered)),
+        _ => Ok(format_prime(&filtered)),
     }
 }
