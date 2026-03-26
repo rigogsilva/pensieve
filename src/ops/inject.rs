@@ -33,8 +33,13 @@ fn format_compact(results: &[crate::types::MemoryCompact]) -> String {
 
     let mut out = format!("[Pensieve: {} relevant memories]\n", results.len());
     for r in results {
-        let project_str = r.project.as_ref().map_or(String::new(), |p| format!(" — project:{p}"));
-        let _ = writeln!(out, "- ({}) {}{}", r.memory_type, r.title, project_str);
+        let summary = r
+            .preview
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .map(str::trim)
+            .unwrap_or(r.title.as_str());
+        let _ = writeln!(out, "- [{}] {}: {}", r.memory_type, r.topic_key, summary);
     }
     out
 }

@@ -1254,7 +1254,8 @@ fn test_inject_query_flag() {
         pensieve::ops::inject::run_inject(&config, Some("patronus".to_string()), None, None, None)
             .unwrap();
 
-    assert!(result.contains("Patronus Charm"), "inject should find indexed memory, got: {result}");
+    assert!(result.contains("patronus-inject"), "inject should include topic_key, got: {result}");
+    assert!(result.contains("patronus charm requires focus"), "inject should include preview, got: {result}");
     assert!(result.contains("[Pensieve:"), "should have compact format header");
 }
 
