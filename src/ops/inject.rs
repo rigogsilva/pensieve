@@ -37,8 +37,7 @@ fn format_compact(results: &[crate::types::MemoryCompact]) -> String {
             .preview
             .lines()
             .find(|l| !l.trim().is_empty())
-            .map(str::trim)
-            .unwrap_or(r.title.as_str());
+            .map_or(r.title.as_str(), str::trim);
         let _ = writeln!(out, "- [{}] {}: {}", r.memory_type, r.topic_key, summary);
     }
     out
