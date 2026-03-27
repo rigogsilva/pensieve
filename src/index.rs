@@ -1,5 +1,5 @@
 use crate::error::{PensieveError, Result};
-use rusqlite::params;
+use rusqlite::{params, OpenFlags};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -58,6 +58,26 @@ impl Index {
                 memory_id TEXT PRIMARY KEY,
                 embedding float[384]
             );",
+        )?;
+
+        Ok(Self { conn: Mutex::new(conn) })
+    }
+
+    /// Open the index in read-only mode (no WAL/SHM writes).
+    /// Use this for recall/search in sandboxed or read-only environments.
+    pub fn open_readonly(memory_dir: &Path) -> Result<Self> {
+        #[allow(unsafe_code)]
+        unsafe {
+            #[allow(clippy::missing_transmute_annotations)]
+            rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
+                sqlite_vec::sqlite3_vec_init as *const (),
+            )));
+        }
+
+        let db_path = memory_dir.join("index.sqlite");
+        let conn = rusqlite::Connection::open_with_flags(
+            db_path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
 
         Ok(Self { conn: Mutex::new(conn) })

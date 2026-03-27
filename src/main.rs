@@ -211,7 +211,9 @@ async fn main() {
                 limit,
             };
 
-            match index::Index::open(&cfg.memory_dir) {
+            let idx_result = index::Index::open_readonly(&cfg.memory_dir)
+                .or_else(|_| index::Index::open(&cfg.memory_dir));
+            match idx_result {
                 Ok(idx) => match ops::recall::recall(&cfg, &idx, &input) {
                     Ok(results) => output_result(format, &results),
                     Err(e) => {
