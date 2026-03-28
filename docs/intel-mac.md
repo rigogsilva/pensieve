@@ -47,8 +47,11 @@ and baked into the container image so it doesn't download on every run.
 ```bash
 pip3 install huggingface_hub
 python3 -c "
+import os
 from huggingface_hub import snapshot_download
-snapshot_download(repo_id='Xenova/bge-small-en-v1.5', cache_dir='/tmp/pensieve-model')
+cache = os.path.expanduser('~/.pensieve/container/fastembed-cache')
+os.makedirs(cache, exist_ok=True)
+snapshot_download(repo_id='Xenova/bge-small-en-v1.5', cache_dir=cache)
 print('Model downloaded.')
 "
 ```
@@ -58,11 +61,10 @@ print('Model downloaded.')
 Create a `Dockerfile`:
 
 ```bash
-mkdir -p /tmp/pensieve-docker
-cp ~/pensieve-linux /tmp/pensieve-docker/pensieve
-cp -r /tmp/pensieve-model /tmp/pensieve-docker/fastembed-cache
+mkdir -p ~/.pensieve/container
+cp ~/pensieve-linux ~/.pensieve/container/pensieve
 
-cat > /tmp/pensieve-docker/Dockerfile << 'EOF'
+cat > ~/.pensieve/container/Dockerfile << 'EOF'
 FROM ubuntu:24.04
 COPY pensieve /usr/local/bin/pensieve
 RUN chmod +x /usr/local/bin/pensieve
@@ -75,7 +77,7 @@ EOF
 Build it:
 
 ```bash
-cd /tmp/pensieve-docker && podman build -t pensieve:latest .
+cd ~/.pensieve/container && podman build -t pensieve:latest .
 ```
 
 ### Step 5 — Create the wrapper script
@@ -160,8 +162,8 @@ curl -fsSL -L \
 chmod +x ~/pensieve-linux
 
 # Rebuild the image (model is already cached, no re-download needed)
-cp ~/pensieve-linux /tmp/pensieve-docker/pensieve
-cd /tmp/pensieve-docker && podman build -t pensieve:latest .
+cp ~/pensieve-linux ~/.pensieve/container/pensieve
+cd ~/.pensieve/container && podman build -t pensieve:latest .
 ```
 
 Or use this one-liner update script:
@@ -171,8 +173,8 @@ curl -fsSL -L \
   https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-unknown-linux-gnu \
   -o ~/pensieve-linux \
   && chmod +x ~/pensieve-linux \
-  && cp ~/pensieve-linux /tmp/pensieve-docker/pensieve \
-  && cd /tmp/pensieve-docker \
+  && cp ~/pensieve-linux ~/.pensieve/container/pensieve \
+  && cd ~/.pensieve/container \
   && podman build -t pensieve:latest . \
   && echo "Pensieve updated."
 ```
