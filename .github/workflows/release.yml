@@ -23,6 +23,9 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             name: pensieve-aarch64-apple-darwin
+          - target: x86_64-apple-darwin
+            os: macos-13
+            name: pensieve-x86_64-apple-darwin
 
     runs-on: ${{ matrix.os }}
 
