@@ -114,9 +114,14 @@ mkdir -p ~/bin && curl -fsSL https://github.com/rigogsilva/pensieve/releases/lat
 # Linux (x86_64)
 mkdir -p ~/bin && curl -fsSL https://github.com/rigogsilva/pensieve/releases/latest/download/pensieve-x86_64-unknown-linux-gnu -o ~/bin/pensieve && chmod +x ~/bin/pensieve
 
-# From source (macOS Intel, Linux aarch64, or any platform with Rust)
+# From source (Linux aarch64, or any platform with Rust)
 cargo install --git https://github.com/rigogsilva/pensieve
 ```
+
+**macOS Intel (x86_64):** The ONNX Runtime dependency dropped prebuilt Intel Mac
+binaries. See **[docs/intel-mac.md](docs/intel-mac.md)** for a Podman-based
+setup that runs the Linux binary in a container with full ONNX embedding support
+and a transparent wrapper script.
 
 Then run `pensieve setup` to configure your agents.
 
