@@ -1,5 +1,5 @@
 use crate::error::{PensieveError, Result};
-use rusqlite::{params, OpenFlags};
+use rusqlite::{OpenFlags, params};
 use std::path::Path;
 use std::sync::Mutex;
 
