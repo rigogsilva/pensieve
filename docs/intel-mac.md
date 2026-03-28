@@ -115,6 +115,7 @@ podman run --rm -i \
   -v "${MEMORY_DIR}/global:/sqlite/global:z" \
   -v "${MEMORY_DIR}/projects:/sqlite/projects:z" \
   -v "${MEMORY_DIR}/sessions:/sqlite/sessions:z" \
+  -v "${HOME}/.config/pensieve:${HOME}/.config/pensieve:z" \
   "${EXTRA_MOUNTS[@]}" \
   localhost/pensieve:latest \
   --memory-dir /sqlite "$@"
