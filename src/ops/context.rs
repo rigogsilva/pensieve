@@ -146,7 +146,12 @@ fn write_memory_index(
 
     let global_content =
         global_memories.iter().map(|m| format_memory_line(m)).collect::<Vec<_>>().join("\n");
-    std::fs::write(config.memory_dir.join("MEMORY.md"), &global_content)?;
+    // If MEMORY.md already exists, the @import in CLAUDE.md has already loaded
+    // the index into the session context. Skip returning it inline to avoid
+    // duplicating ~3K tokens. Still write the updated file for next session.
+    let memory_md_path = config.memory_dir.join("MEMORY.md");
+    let index_already_loaded = memory_md_path.exists();
+    std::fs::write(&memory_md_path, &global_content)?;
 
     // Project index: scoped fetch returns only that project's memories
     let project_index = if let Some(proj) = project {
@@ -164,5 +169,6 @@ fn write_memory_index(
         None
     };
 
-    Ok((global_content, project_index))
+    let global_index = if index_already_loaded { String::new() } else { global_content };
+    Ok((global_index, project_index))
 }
