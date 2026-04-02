@@ -9,18 +9,23 @@ description:
 
 ## Step 1: Add Memory Protocol to instruction file (optional)
 
-Ask the user: "Want to add Pensieve usage instructions to your global instruction file? The hooks handle context loading automatically — this just adds CLI reference for saving/recalling. Most users skip this."
+Ask the user: "Want to add Pensieve usage instructions to your global
+instruction file? The hooks handle context loading automatically — this just
+adds CLI reference for saving/recalling. Most users skip this."
 
 If yes, write to the **global** instruction file (never the project directory):
+
 - **Claude Code**: `~/.claude/CLAUDE.md`
 - **Codex CLI**: `~/.codex/AGENTS.md`
 - **Other agents**: Global instruction file in home directory
 
-Read the target file. If `<!-- pensieve:start -->` markers are absent, append the canonical block. If markers exist, compare exactly — replace if any difference.
+Read the target file. If `<!-- pensieve:start -->` markers are absent, append
+the canonical block. If markers exist, compare exactly — replace if any
+difference.
 
 The canonical block:
 
-```
+````
 <!-- pensieve:start -->
 ## Pensieve Memory
 
@@ -37,16 +42,21 @@ Binary: `__PENSIEVE_BIN__` | Types: gotcha, decision, preference, how-it-works, 
 pensieve save --json '{"type":"decision","topic_key":"key","title":"Title","project":"proj","content":"..."}'
 pensieve read --json '{"topic_key":"<key>"}' --output json
 pensieve recall "query" --output json
-```
+````
 
-Tips: `topic_key` reuses update (no duplicates). `project` = repo/org name, omit for global. `pensieve schema <cmd>` for exact fields.
+Tips: `topic_key` reuses update (no duplicates). `project` = repo/org name, omit
+for global. `pensieve schema <cmd>` for exact fields.
+
 <!-- pensieve:end -->
+
 ```
 
 For Claude Code, also ensure this line exists after the block (loads memory index into every session):
 ```
+
 @~/.pensieve/memory/MEMORY.md
-```
+
+````
 
 ## Step 2: Set up hooks
 
@@ -74,29 +84,61 @@ If yes: run `__PENSIEVE_BIN__ configure --prime-enabled true`, then add the pre-
     "PostCompact": [{"hooks": [{"type": "command", "command": "__PENSIEVE_BIN__ end-session --summary \"$(cat | jq -r '.compact_summary')\" --source claude-code 2>/dev/null || true"}]}]
   }
 }
-```
+````
+
 `UserPromptSubmit` only if opted in. `SessionStart` and `PostCompact` always.
 
 **Cursor** (`~/.cursor/hooks.json` — only if opted in):
+
 ```json
-{"version": 1, "hooks": {"beforeSubmitPrompt": [{"command": "__PENSIEVE_BIN__ prime --limit 3"}]}}
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [{ "command": "__PENSIEVE_BIN__ prime --limit 3" }]
+  }
+}
 ```
 
 **Gemini CLI** (`~/.gemini/settings.json`):
+
 ```json
-{"hooks": {"BeforeAgent": [{"type": "command", "command": "__PENSIEVE_BIN__ prime --limit 3"}], "SessionStart": [{"type": "command", "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"}]}}
+{
+  "hooks": {
+    "BeforeAgent": [
+      { "type": "command", "command": "__PENSIEVE_BIN__ prime --limit 3" }
+    ],
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
+      }
+    ]
+  }
+}
 ```
+
 `BeforeAgent` only if opted in. `SessionStart` always.
 
 **Codex CLI** (`~/.codex/hooks.json` — global, not workspace):
+
 ```json
-{"hooks": {"SessionStart": [{"type": "command", "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"}]}}
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
+      }
+    ]
+  }
+}
 ```
 
 ## Step 3: Verify
 
 1. **Hooks** — re-read hooks config, confirm every command is present verbatim
 2. **CLI** — run `__PENSIEVE_BIN__ context` and confirm it returns a response
-3. **Memory Protocol** (if added) — re-read instruction file, confirm content between markers matches
+3. **Memory Protocol** (if added) — re-read instruction file, confirm content
+   between markers matches
 
 Report what was set up, updated, or already correct. Be specific.
