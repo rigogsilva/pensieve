@@ -7,377 +7,96 @@ description:
 
 # Pensieve Setup Skill
 
-When the user asks you to "set up pensieve", follow these steps.
+## Step 1: Add Memory Protocol to instruction file (optional)
 
-## Step 1: Detect your environment
+Ask the user: "Want to add Pensieve usage instructions to your global instruction file? The hooks handle context loading automatically — this just adds CLI reference for saving/recalling. Most users skip this."
 
-Determine which agent you are and follow the matching section:
+If yes, write to the **global** instruction file (never the project directory):
+- **Claude Code**: `~/.claude/CLAUDE.md`
+- **Codex CLI**: `~/.codex/AGENTS.md`
+- **Other agents**: Global instruction file in home directory
 
-### If you are Claude Code
+Read the target file. If `<!-- pensieve:start -->` markers are absent, append the canonical block. If markers exist, compare exactly — replace if any difference.
 
-Register the MCP server:
-
-```bash
-claude mcp add --transport stdio --scope user pensieve -- __PENSIEVE_BIN__ serve
-```
-
-Then add the Memory Protocol (see Step 2).
-
-### If you are Claude Desktop
-
-Read the Claude Desktop config file:
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Linux: `~/.config/claude-desktop/config.json`
-
-Add the following to the `mcpServers` object (merge with existing servers, don't
-replace them):
-
-```json
-"pensieve": {
-  "command": "__PENSIEVE_BIN__",
-  "args": ["serve"]
-}
-```
-
-Write the file back. Tell the user to restart Claude Desktop to activate.
-
-### If you are Codex CLI or another agent
-
-Add the Memory Protocol (see Step 2). You can use Pensieve via CLI commands.
-
-## Step 2: Add Memory Protocol
-
-IMPORTANT: This is a GLOBAL setup, not per-project. Add the Memory Protocol to
-the user-level instruction file. DO NOT create or modify any file in the current
-working directory.
-
-- **Claude Code**: `~/.claude/CLAUDE.md` — NOT the project's CLAUDE.md, NOT
-  `./CLAUDE.md`
-- **Codex CLI**: `~/.codex/AGENTS.md` — NOT `./AGENTS.md` in the workspace
-- **Other agents**: The global instruction file for that agent (always in the
-  home directory)
-
-**Finding markers is not enough — you must verify the content matches exactly.**
-
-Read the target file. Then:
-
-1. If the file doesn't exist or `<!-- pensieve:start -->` markers are absent →
-   append the full canonical block below (create the file if needed).
-2. If markers **do** exist → read the full content between them, then read the
-   canonical block below, and **compare them yourself**. Do not ask the user
-   what's different — you must determine this by reading both. If there is _any_
-   difference (missing lines, outdated wording, wrong commands, truncated
-   sections) → replace the entire content between the markers with the canonical
-   version. Do NOT declare success just because the markers are present —
-   presence ≠ correctness.
-
-The canonical block to write (including markers):
+The canonical block:
 
 ```
 <!-- pensieve:start -->
-## Memory Protocol
+## Pensieve Memory
 
-This project uses [Pensieve](https://github.com/rigogsilva/pensieve) for cross-agent persistent memory.
-Binary: `__PENSIEVE_BIN__`
+Binary: `__PENSIEVE_BIN__` | Types: gotcha, decision, preference, how-it-works, discovery
 
-**These steps are mandatory. Skipping any required step is a protocol violation.**
+**Required steps every session:**
+1. **Session start**: `pensieve context 2>/dev/null || true`
+2. **Before work**: `pensieve recall "query" --output json`
+3. **During work**: Save immediately on bugs, decisions, corrections, how-things-work — don't defer
+4. **Before final response**: `pensieve end-session --summary "..." --project <p> --source <agent>`
 
-### Access
-Use whichever is available — both have identical capabilities:
-- **MCP tools** (preferred): `save_memory`, `recall`, `get_context`, `end_session`, `read_memory`, `delete_memory`, `list_memories`, `archive_memory`, `configure`
-- **CLI** (always works): `__PENSIEVE_BIN__ <subcommand>`
-
-If MCP tools are unavailable, use CLI immediately — do not skip.
-
-### Global memory index
-
-`get_context` writes `~/.pensieve/memory/MEMORY.md` at session start — a
-one-line-per-memory index of all globally-scoped memories. For Claude Code, add
-this import to `~/.claude/CLAUDE.md` to load the index into every session
-automatically (even before `get_context` is called):
-
-```
-
-@~/.pensieve/memory/MEMORY.md
-
-```
-
-For other agents (Codex CLI, Gemini CLI, Cursor), the index is provided via
-`SessionStart` hook output — no additional config needed.
-
-Use `pensieve read --json '{"topic_key":"<key>"}' --output json` to fetch full
-content for any entry in the index.
-
-### Step 1 — Session start (REQUIRED, do this first)
-
-Before any other work — before reading code, answering questions, or making a plan — run:
-
-```
-
-get_context(project, source)
-
-````
-or
+**CLI patterns** (use `--json` for input, `--output json` for output):
 ```bash
-__PENSIEVE_BIN__ context 2>/dev/null || true
-````
-
-If `get_context` has not been called yet this session, stop and do it now. If it
-fails, say so explicitly and continue.
-
-### Step 2 — Before substantive work (REQUIRED)
-
-Search prior knowledge before beginning repo analysis, planning, or
-implementation:
-
-```
-recall("query")
+pensieve save --json '{"type":"decision","topic_key":"key","title":"Title","project":"proj","content":"..."}'
+pensieve read --json '{"topic_key":"<key>"}' --output json
+pensieve recall "query" --output json
 ```
 
-or
-
-```bash
-__PENSIEVE_BIN__ recall "query"
-```
-
-Also search when the user says "remember" or references past work. If recall
-fails, say so explicitly and continue.
-
-### Step 3 — During work (save immediately, do not defer)
-
-Save a memory the moment you encounter any of:
-
-- A bug cause or surprising behavior → `type: gotcha`
-- A design or architecture decision → `type: decision`
-- A user correction or preference → `type: preference`
-- How something works → `type: how-it-works`
-- Any detail you'd want in a future session → `type: discovery`
-
-If you thought "this might be useful later" — save it now. Do not batch saves
-for the end of a turn.
-
-### Step 4 — Before final response (REQUIRED)
-
-Before sending any response that concludes a task, call `end_session` first:
-
-```
-end_session(summary, project, source)
-```
-
-or
-
-```bash
-__PENSIEVE_BIN__ end-session --summary "2-3 sentence summary" --project <project> --source <agent>
-```
-
-Trigger when: user says goodbye/done/thanks, task is fully complete, or
-conversation reaches a stopping point. If `end_session` fails, say so explicitly
-in your response.
-
-### CLI usage for agents
-
-Use `--json` for input on commands that support it (`save`, `end-session`,
-`read`) — agents construct JSON naturally and it avoids shell quoting issues
-with backticks, newlines, and special characters:
-
-```bash
-# types: gotcha | decision | preference | how-it-works | discovery
-# project: GitHub repo or org name (e.g. wearhouse, camber-ops). Omit for knowledge that spans all projects.
-__PENSIEVE_BIN__ save --json '{"type":"decision","topic_key":"my-key","title":"My Title","project":"myproject","content":"..."}'
-```
-
-For very large content, `@file` is a fallback:
-
-```bash
-__PENSIEVE_BIN__ save --json @/tmp/payload.json
-```
-
-Use `--output json` on all commands — agents should always prefer structured
-output over human-readable text:
-
-```bash
-__PENSIEVE_BIN__ recall "query" --output json
-__PENSIEVE_BIN__ list --output json
-__PENSIEVE_BIN__ list --since yesterday --output json
-__PENSIEVE_BIN__ read --json '{"topic_key":"<key>"}' --output json
-```
-
-Run `__PENSIEVE_BIN__ schema <command>` to get the exact JSON field names and
-types. Never guess flag names — run `--help` if unsure.
-
-### Tips
-
-- `topic_key` reuses update the memory (revision increments) — no duplicates
-- `dry_run` on save/delete/archive previews without writing
-- `project` = GitHub repo or org name (e.g. `wearhouse`, `camber-ops`). Omit for
-  knowledge that spans all projects.
-- `read --json '{"topic_key":"<key>"}' --output json` — fetch a specific memory
-by key; positional args are not supported and will fail silently
+Tips: `topic_key` reuses update (no duplicates). `project` = repo/org name, omit for global. `pensieve schema <cmd>` for exact fields.
 <!-- pensieve:end -->
+```
 
-````
+For Claude Code, also ensure this line exists after the block (loads memory index into every session):
+```
+@~/.pensieve/memory/MEMORY.md
+```
 
-## Step 3: Set up hooks
+## Step 2: Set up hooks
 
-### SessionStart hook (always set up)
+### SessionStart hook (always add)
 
-All agents that support session hooks should wire `SessionStart` to load context
-at session start and after compaction. This is NOT opt-in — always set it up.
+All agents that support session hooks get `SessionStart` wired. This is NOT opt-in.
 
-### Memory priming hook (strictly opt-in — only add if user explicitly says yes)
+### Memory priming hook (opt-in only)
 
-The `UserPromptSubmit` / `BeforeAgent` / `beforeSubmitPrompt` hooks are **opt-in only**.
-Do not add them unless the user has explicitly said "yes" to memory priming **in this
-conversation**. If there is any ambiguity — if the user hasn't been asked yet, or
-hasn't answered — skip these hooks entirely. Never assume consent.
+`UserPromptSubmit` / `BeforeAgent` / `beforeSubmitPrompt` hooks are **opt-in only**. Ask the user:
 
-Ask the user: "Would you like to enable memory priming? Without it, I only use
-Pensieve when you explicitly ask me to recall something — meaning I'll miss
-relevant memories I don't know to look for. With memory priming enabled, relevant
-memories are automatically surfaced before every prompt, so I always have
-context even when I don't know to search for it. It's opt-in and you can
-disable it anytime with `__PENSIEVE_BIN__ configure --prime-enabled false`."
+> "Enable memory priming? With it, relevant memories are automatically surfaced before every prompt. Without it, Pensieve is only used when you explicitly ask. Disable anytime with `__PENSIEVE_BIN__ configure --prime-enabled false`."
 
-If the user says **yes**:
-1. Run: `__PENSIEVE_BIN__ configure --prime-enabled true`
-2. Add the pre-prompt hook for your agent (see below)
+If yes: run `__PENSIEVE_BIN__ configure --prime-enabled true`, then add the pre-prompt hook. If no or unanswered: skip it.
 
-If the user says **no** or hasn't answered: skip the pre-prompt hook entirely.
-Still add the SessionStart and PostCompact hooks — those are always added.
+### Hook configs by agent
 
-### Claude Code
-
-Read `~/.claude/settings.json`. If it doesn't exist, create it.
-
-If it exists, parse the JSON and **compare each pensieve hook command to the canonical versions below**. Finding a hook with "pensieve" in the command is not enough — verify the exact command string matches. If any hook is missing, has the wrong command, or is outdated → update it. Do not skip this comparison just because pensieve hooks appear to exist.
-
+**Claude Code** (`~/.claude/settings.json` — compare each command exactly, don't just check for "pensieve"):
 ```json
 {
-  "permissions": {
-    "allow": [
-      "Bash(__PENSIEVE_BIN__*)"
-    ]
-  },
+  "permissions": { "allow": ["Bash(__PENSIEVE_BIN__*)"] },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "__PENSIEVE_BIN__ prime --limit 3"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "__PENSIEVE_BIN__ end-session --summary \\"$(cat | jq -r '.compact_summary')\\" --source claude-code 2>/dev/null || true"
-          }
-        ]
-      }
-    ]
-  }
-}
-````
-
-The `UserPromptSubmit` hook reads the prompt from stdin (JSON) and injects
-relevant memories. Only add this hook if the user opted in to auto-inject. The
-`SessionStart` and `PostCompact` hooks are always added. `PostCompact`
-auto-saves the compaction summary so long sessions are never lost.
-
-### Cursor
-
-Read `~/.cursor/hooks.json`. If it doesn't exist, create it. Merge with existing
-hooks. Check for "pensieve" to avoid duplicates.
-
-```json
-{
-  "version": 1,
-  "hooks": {
-    "beforeSubmitPrompt": [
-      {
-        "command": "__PENSIEVE_BIN__ prime --limit 3"
-      }
-    ]
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "__PENSIEVE_BIN__ prime --limit 3"}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"}]}],
+    "PostCompact": [{"hooks": [{"type": "command", "command": "__PENSIEVE_BIN__ end-session --summary \"$(cat | jq -r '.compact_summary')\" --source claude-code 2>/dev/null || true"}]}]
   }
 }
 ```
+`UserPromptSubmit` only if opted in. `SessionStart` and `PostCompact` always.
 
-Only add `beforeSubmitPrompt` if the user opted in to auto-inject.
-
-### Gemini CLI
-
-Read `~/.gemini/settings.json`. If it doesn't exist, create it. Merge with
-existing hooks. Check for "pensieve" to avoid duplicates.
-
+**Cursor** (`~/.cursor/hooks.json` — only if opted in):
 ```json
-{
-  "hooks": {
-    "BeforeAgent": [
-      {
-        "type": "command",
-        "command": "__PENSIEVE_BIN__ prime --limit 3"
-      }
-    ],
-    "SessionStart": [
-      {
-        "type": "command",
-        "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
-      }
-    ]
-  }
-}
+{"version": 1, "hooks": {"beforeSubmitPrompt": [{"command": "__PENSIEVE_BIN__ prime --limit 3"}]}}
 ```
 
-Only add `BeforeAgent` if the user opted in. `SessionStart` is always added.
-
-### Codex CLI
-
-Read `~/.codex/hooks.json` (global, NOT `./.codex/hooks.json` in the workspace).
-Only `SessionStart` is available (no pre-prompt hook yet). Always add it:
-
+**Gemini CLI** (`~/.gemini/settings.json`):
 ```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "type": "command",
-        "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"
-      }
-    ]
-  }
-}
+{"hooks": {"BeforeAgent": [{"type": "command", "command": "__PENSIEVE_BIN__ prime --limit 3"}], "SessionStart": [{"type": "command", "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"}]}}
+```
+`BeforeAgent` only if opted in. `SessionStart` always.
+
+**Codex CLI** (`~/.codex/hooks.json` — global, not workspace):
+```json
+{"hooks": {"SessionStart": [{"type": "command", "command": "__PENSIEVE_BIN__ context 2>/dev/null || true"}]}}
 ```
 
-## Step 4: Verify
+## Step 3: Verify
 
-Before declaring success, confirm each of the following — don't just run
-`pensieve context` and stop:
+1. **Hooks** — re-read hooks config, confirm every command is present verbatim
+2. **CLI** — run `__PENSIEVE_BIN__ context` and confirm it returns a response
+3. **Memory Protocol** (if added) — re-read instruction file, confirm content between markers matches
 
-1. **Memory Protocol block** — re-read the target instruction file and confirm
-   the content between `<!-- pensieve:start -->` and `<!-- pensieve:end -->`
-   exactly matches the canonical block from Step 2. If it doesn't, fix it now.
-2. **Hooks** — re-read the hooks config and confirm every canonical hook command
-   is present verbatim. If any are missing or wrong, fix them now.
-3. **MCP registration** — run `__PENSIEVE_BIN__ context` and confirm it returns
-   a response (not an error). If it errors, the MCP server or CLI path is
-   broken.
-
-Only after all three pass, tell the user what was set up (or updated) and what
-was already correct. Be specific — "Memory Protocol was up to date, hooks were
-missing PostCompact so I added it" is more useful than a generic success
-message.
+Report what was set up, updated, or already correct. Be specific.
