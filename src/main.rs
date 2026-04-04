@@ -116,27 +116,34 @@ async fn main() {
                 Ok(memory) => {
                     // Best-effort index upsert
                     if !dry_run {
-                        if let Ok(idx) = index::Index::open(&cfg.memory_dir) {
-                            let memory_id = match &memory.project {
-                                Some(p) => format!("projects/{}/{}", p, memory.topic_key),
-                                None => format!("global/{}", memory.topic_key),
-                            };
-                            let embed_text = embedder::build_embedding_text(
-                                &memory.title,
-                                &memory.content,
-                                &memory.memory_type,
-                                memory.project.as_deref(),
-                                &memory.tags,
-                            );
-                            let embedding = embedder::try_embed(&embed_text);
-                            let _ = idx.upsert(
-                                &memory_id,
-                                &memory.title,
-                                &memory.content,
-                                memory.project.as_deref(),
-                                &memory.tags,
-                                embedding.as_deref(),
-                            );
+                        match index::Index::open(&cfg.memory_dir) {
+                            Ok(idx) => {
+                                let memory_id = match &memory.project {
+                                    Some(p) => format!("projects/{}/{}", p, memory.topic_key),
+                                    None => format!("global/{}", memory.topic_key),
+                                };
+                                let embed_text = embedder::build_embedding_text(
+                                    &memory.title,
+                                    &memory.content,
+                                    &memory.memory_type,
+                                    memory.project.as_deref(),
+                                    &memory.tags,
+                                );
+                                let embedding = embedder::try_embed(&embed_text);
+                                if let Err(e) = idx.upsert(
+                                    &memory_id,
+                                    &memory.title,
+                                    &memory.content,
+                                    memory.project.as_deref(),
+                                    &memory.tags,
+                                    embedding.as_deref(),
+                                ) {
+                                    eprintln!("warning: index upsert failed (run `pensieve reindex` to rebuild): {e}");
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("warning: index unavailable (run `pensieve reindex` to rebuild): {e}");
+                            }
                         }
                     }
                     output_result(format, &memory);
