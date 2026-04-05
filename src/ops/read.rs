@@ -18,24 +18,7 @@ pub fn read_memory(
         return Ok(memory);
     }
 
-    // Scan all project directories for a matching topic_key.
-    let projects_dir = config.memory_dir.join("projects");
-    let mut matches: Vec<Memory> = Vec::new();
-
-    if projects_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(&projects_dir) {
-            for entry in entries.filter_map(std::result::Result::ok) {
-                if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
-                    if let Some(proj_name) = entry.file_name().to_str() {
-                        if let Ok(memory) = storage::read_memory(config, topic_key, Some(proj_name))
-                        {
-                            matches.push(memory);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let matches = storage::find_all_by_topic_key(config, topic_key);
 
     match matches.len() {
         0 => Err(PensieveError::NotFound(format!("memory not found: {topic_key}"))),

@@ -578,6 +578,62 @@ fn test_save_revision_conflict() {
 }
 
 #[test]
+fn test_save_rejects_cross_scope_duplicate() {
+    let dir = TempDir::new().unwrap();
+    let config = test_config(&dir);
+    pensieve::storage::ensure_dirs(&config).unwrap();
+
+    // Save in project A
+    let input1 = pensieve::ops::save::SaveInput {
+        content: "Original".to_string(),
+        title: "Cross Scope".to_string(),
+        memory_type: pensieve::types::MemoryType::Gotcha,
+        topic_key: "cross-scope-key".to_string(),
+        project: Some("project-a".to_string()),
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    pensieve::ops::save::save_memory(&config, input1).unwrap();
+
+    // Attempt to save same topic_key in project B — should fail
+    let input2 = pensieve::ops::save::SaveInput {
+        content: "Duplicate".to_string(),
+        title: "Cross Scope Dupe".to_string(),
+        memory_type: pensieve::types::MemoryType::Gotcha,
+        topic_key: "cross-scope-key".to_string(),
+        project: Some("project-b".to_string()),
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    let result = pensieve::ops::save::save_memory(&config, input2);
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("already exists"), "error was: {err}");
+
+    // Saving in the same project should still succeed (upsert)
+    let input3 = pensieve::ops::save::SaveInput {
+        content: "Updated".to_string(),
+        title: "Cross Scope Updated".to_string(),
+        memory_type: pensieve::types::MemoryType::Gotcha,
+        topic_key: "cross-scope-key".to_string(),
+        project: Some("project-a".to_string()),
+        tags: vec![],
+        source: None,
+        confidence: None,
+        expected_revision: None,
+        dry_run: false,
+    };
+    let updated = pensieve::ops::save::save_memory(&config, input3).unwrap();
+    assert_eq!(updated.revision, 2);
+}
+
+#[test]
 fn test_save_dry_run() {
     let dir = TempDir::new().unwrap();
     let config = test_config(&dir);

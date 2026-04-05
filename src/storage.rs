@@ -70,6 +70,32 @@ pub fn delete_memory_file(
     Ok(())
 }
 
+/// Returns all memories matching `topic_key` across every scope (global + all projects).
+pub fn find_all_by_topic_key(config: &PensieveConfig, topic_key: &str) -> Vec<Memory> {
+    let mut matches = Vec::new();
+
+    if let Ok(memory) = read_memory(config, topic_key, None) {
+        matches.push(memory);
+    }
+
+    let projects_dir = config.memory_dir.join("projects");
+    if projects_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&projects_dir) {
+            for entry in entries.filter_map(std::result::Result::ok) {
+                if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                    if let Some(proj_name) = entry.file_name().to_str() {
+                        if let Ok(memory) = read_memory(config, topic_key, Some(proj_name)) {
+                            matches.push(memory);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    matches
+}
+
 pub fn list_memory_files(
     config: &PensieveConfig,
     project: Option<&str>,

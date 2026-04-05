@@ -26,6 +26,24 @@ pub fn save_memory(config: &PensieveConfig, input: SaveInput) -> Result<Memory> 
 
     storage::ensure_dirs(config)?;
 
+    // Check for cross-scope duplicates: if this topic_key exists under a different scope,
+    // reject the save to prevent silent duplicates.
+    let existing_elsewhere: Vec<_> = storage::find_all_by_topic_key(config, &input.topic_key)
+        .into_iter()
+        .filter(|m| m.project != input.project)
+        .collect();
+    if let Some(conflict) = existing_elsewhere.first() {
+        let location = conflict
+            .project
+            .as_deref()
+            .map(|p| format!("project '{p}'"))
+            .unwrap_or_else(|| "global scope".to_string());
+        return Err(PensieveError::InvalidInput(format!(
+            "topic_key '{}' already exists in {}. Update it there or choose a different topic_key.",
+            input.topic_key, location
+        )));
+    }
+
     let now = Utc::now();
 
     let memory = match storage::read_memory(config, &input.topic_key, input.project.as_deref()) {
